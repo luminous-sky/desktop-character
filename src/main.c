@@ -5,8 +5,8 @@
 #include "image.h"
 
 // Temporary variables
-const unsigned int WIDTH = 512;
-const unsigned int HEIGHT = 512;
+const unsigned int WIDTH = 32;
+const unsigned int HEIGHT = 32;
 
 // Spritesheet information
 const unsigned int SPRITE_WIDTH = 32;
@@ -23,7 +23,7 @@ int main() {
         return 1;
     }
 
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", WIDTH, HEIGHT, 0);
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", WIDTH, HEIGHT, SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
     if (!window) {
         printf("Failed to create a window.\n");
         return 1;
@@ -52,7 +52,7 @@ int main() {
         return 1;
     }
 
-    Uint32 bg = SDL_MapSurfaceRGB(windowSurface, 0xFF, 0xFF, 0xFF);
+    Uint32 bg = SDL_MapSurfaceRGBA(windowSurface, 0xFF, 0xFF, 0xFF, 0x00);
     for (int i = 0; i < 4; i++) {
         // Clear background
         SDL_FillSurfaceRect(windowSurface, NULL, bg);
@@ -66,11 +66,23 @@ int main() {
         SDL_UpdateWindowSurface(window);
 
         // Delay
+        bool exiting = false;
+
         unsigned long start = SDL_GetTicks();
         unsigned long cur = SDL_GetTicks();
         while ((cur - start) < MS_PER_FRAME) {
             cur = SDL_GetTicks();
+
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_EVENT_QUIT) {
+                    exiting = true;
+                    break;
+                }
+            }
         }
+
+        if (exiting) break;
     }
 
     // Clean up
