@@ -79,10 +79,9 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
         return false;
     }
 
-    Uint32 bg = SDL_MapSurfaceRGBA(windowSurface, 0xFF, 0xFF, 0xFF, 0x00);
     for (int i = 0; i < person -> len; i++) {
         // Clear background
-        SDL_FillSurfaceRect(windowSurface, NULL, bg);
+        SDL_ClearSurface(windowSurface, 0.0, 0.0, 0.0, 0.0);
 
         // Render sprite
         if (!SDL_BlitSurface(sprites[i], NULL, windowSurface, NULL)) {
