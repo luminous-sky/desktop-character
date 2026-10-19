@@ -3,6 +3,7 @@
 #include <SDL3_image/SDL_image.h>
 
 #include "image.h"
+#include "character.h"
 
 // Temporary variables
 const unsigned int WIDTH = 32;
@@ -15,6 +16,7 @@ const unsigned int FRAMES = 4;
 
 // 4 FPS
 const Uint64 MS_PER_FRAME = 1000;
+
 
 int main() {
     // Initialize
@@ -36,24 +38,21 @@ int main() {
     }
 
 
-    // Render image
-    SDL_Surface *spritesheet = loadImage("./example/walk_down.png", windowSurface -> format);
-    if (!spritesheet) {
-        printf("Failed to load image.\nError: %s\n", SDL_GetError());
+    // Create character
+    char *up = "./example/walk_up.png";
+    char *right = "./example/walk_right.png";
+    char *down = "./example/walk_down.png";
+    char *left = "./example/walk_left.png";
+    Character *person = createCharacter(up, right, down, left, windowSurface -> format, SPRITE_WIDTH, SPRITE_HEIGHT, FRAMES, MS_PER_FRAME);
+    if (!person) {
+        printf("Failed to load spritesheets.\nError: %s\n", SDL_GetError());
         return 1;
     }
 
-    SDL_Surface **sprites = loadSpritesheet(spritesheet, SPRITE_WIDTH, SPRITE_HEIGHT, FRAMES);
-    SDL_DestroySurface(spritesheet);
-    spritesheet = NULL;
-
-    if (!sprites) {
-        printf("Failed to load spritesheet.\nError: %s\n", SDL_GetError());
-        return 1;
-    }
+    SDL_Surface **sprites = person -> down;
 
     Uint32 bg = SDL_MapSurfaceRGBA(windowSurface, 0xFF, 0xFF, 0xFF, 0x00);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < person -> len; i++) {
         // Clear background
         SDL_FillSurfaceRect(windowSurface, NULL, bg);
 
@@ -70,7 +69,7 @@ int main() {
 
         unsigned long start = SDL_GetTicks();
         unsigned long cur = SDL_GetTicks();
-        while ((cur - start) < MS_PER_FRAME) {
+        while ((cur - start) < person -> msPerFrame) {
             cur = SDL_GetTicks();
 
             SDL_Event event;
@@ -86,7 +85,7 @@ int main() {
     }
 
     // Clean up
-    destroySprites(sprites, FRAMES);
+    destroyCharacter(person);
     SDL_DestroyWindow(window);
 
     SDL_Quit();

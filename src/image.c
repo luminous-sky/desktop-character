@@ -9,7 +9,7 @@
 SDL_Surface *loadImage(char *path, SDL_PixelFormat fmt) {
     SDL_Surface *loaded = IMG_Load(path);
     if (!loaded) return NULL;
-    
+
     SDL_Surface *formatted = SDL_ConvertSurface(loaded, fmt);
     
     SDL_DestroySurface(loaded);
@@ -63,6 +63,18 @@ SDL_Surface **loadSpritesheet(SDL_Surface *surface, int spriteWidth, int spriteH
 
         sprites[cols*lastRow + c] = sprite;
     }
+
+    return sprites;
+}
+
+
+// Combines loadImage() and loadSpritesheet()
+SDL_Surface **loadSpritesheetFromFile(char *path, SDL_PixelFormat fmt, int spriteWidth, int spriteHeight, int numSprites) {
+    SDL_Surface *img = loadImage(path, fmt);
+    if (!img) return NULL;
+    
+    SDL_Surface **sprites = loadSpritesheet(img, spriteWidth, spriteHeight, numSprites);
+    SDL_DestroySurface(img);
 
     return sprites;
 }
