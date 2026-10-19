@@ -60,7 +60,7 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
             break;
     }
 
-    
+
     // Clamp bounds (assuming the first display is used)
     const SDL_DisplayMode *display = SDL_GetCurrentDisplayMode(1);
     if (!display) {
@@ -137,6 +137,9 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
 
 
 int main() {
+    // On Linux, Wayland cannot set the position of the window, so X11 must be used
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+
     // Initialize
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         printf("Failed to initialize SDL.\n");
