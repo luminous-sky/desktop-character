@@ -15,7 +15,64 @@ const unsigned int SPRITE_HEIGHT = 32;
 const unsigned int FRAMES = 4;
 
 // 4 FPS
-const Uint64 MS_PER_FRAME = 1000;
+const Uint64 MS_PER_FRAME = 250;
+
+
+// Returns whether the exit event was sent during the movement
+bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface) {
+    SDL_Surface **sprites = NULL;
+    switch (dir) {
+        case UP:
+            sprites = person -> up;
+            break;
+        case RIGHT:
+            sprites = person -> right;
+            break;
+        case DOWN:
+            sprites = person -> down;
+            break;
+        case LEFT:
+            sprites = person -> left;
+            break;
+        default:
+            break;
+    }
+
+    if (!sprites) {
+        SDL_SetError("The character's sprites failed to load.\n");
+        return false;
+    }
+
+    Uint32 bg = SDL_MapSurfaceRGBA(windowSurface, 0xFF, 0xFF, 0xFF, 0x00);
+    for (int i = 0; i < person -> len; i++) {
+        // Clear background
+        SDL_FillSurfaceRect(windowSurface, NULL, bg);
+
+        // Render sprite
+        if (!SDL_BlitSurface(sprites[i], NULL, windowSurface, NULL)) {
+            printf("Failed to blit surface.\n%s\n", SDL_GetError());
+            return 2;
+        }
+
+        SDL_UpdateWindowSurface(window);
+
+        // Delay
+        unsigned long start = SDL_GetTicks();
+        unsigned long cur = SDL_GetTicks();
+        while ((cur - start) < person -> msPerFrame) {
+            cur = SDL_GetTicks();
+
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_EVENT_QUIT) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
 
 
 int main() {
@@ -49,39 +106,9 @@ int main() {
         return 1;
     }
 
-    SDL_Surface **sprites = person -> down;
-
-    Uint32 bg = SDL_MapSurfaceRGBA(windowSurface, 0xFF, 0xFF, 0xFF, 0x00);
-    for (int i = 0; i < person -> len; i++) {
-        // Clear background
-        SDL_FillSurfaceRect(windowSurface, NULL, bg);
-
-        // Render sprite
-        if (!SDL_BlitSurface(sprites[i], NULL, windowSurface, NULL)) {
-            printf("Failed to blit surface.\n%s\n", SDL_GetError());
-            return 2;
-        }
-
-        SDL_UpdateWindowSurface(window);
-
-        // Delay
-        bool exiting = false;
-
-        unsigned long start = SDL_GetTicks();
-        unsigned long cur = SDL_GetTicks();
-        while ((cur - start) < person -> msPerFrame) {
-            cur = SDL_GetTicks();
-
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                if (event.type == SDL_EVENT_QUIT) {
-                    exiting = true;
-                    break;
-                }
-            }
-        }
-
-        if (exiting) break;
+    while (true) {
+        Direction randDir = (Direction) (SDL_rand(LENGTH));
+        if (move(person, randDir, window, windowSurface)) break;
     }
 
     // Clean up

@@ -17,6 +17,16 @@ typedef struct Character {
 } Character;
 
 
+// Character movement directions
+typedef enum Direction {
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT,
+    LENGTH
+} Direction;
+
+
 Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame);
 void destroyCharacter(Character *created);
 
