@@ -19,24 +19,60 @@ const Uint64 MS_PER_FRAME = 250;
 
 
 // Returns whether the exit event was sent during the movement
-bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface) {
+bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface, int moveOffset) {
+    double pxPerMs = (double) moveOffset / ((person -> msPerFrame) * (person -> len));
+    
+    int curX, curY;
+    if(!SDL_GetWindowPosition(window, &curX, &curY)) {
+        printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
+        return true;
+    }
+
+    int sign = 1;
+    int endX = curX;
+    int endY = curY;
+
+    // Accumulation of pixel change
+    double accumulatedX = 0;
+    double accumulatedY = 0;
+    
     SDL_Surface **sprites = NULL;
     switch (dir) {
         case UP:
             sprites = person -> up;
+            endY -= moveOffset;
+            sign = -1;
             break;
         case RIGHT:
             sprites = person -> right;
+            endX += moveOffset;
             break;
         case DOWN:
             sprites = person -> down;
+            endY += moveOffset;
             break;
         case LEFT:
             sprites = person -> left;
+            endX -= moveOffset;
+            sign = -1;
             break;
         default:
             break;
     }
+
+    
+    // Clamp bounds (assuming the first display is used)
+    const SDL_DisplayMode *display = SDL_GetCurrentDisplayMode(1);
+    if (!display) {
+        printf("Failed to get display.\nError: %s\n", SDL_GetError());
+        return true;
+    }
+
+    if (endX < 0) endX = 0;
+    if (endX > display -> w) endX = display -> w;
+    if (endY < 0) endY = 0;
+    if (endY > display -> h) endY = display -> h;
+
 
     if (!sprites) {
         SDL_SetError("The character's sprites failed to load.\n");
@@ -58,8 +94,10 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
 
         // Delay
         unsigned long start = SDL_GetTicks();
-        unsigned long cur = SDL_GetTicks();
+        unsigned long prev = start;
+        unsigned long cur = start;
         while ((cur - start) < person -> msPerFrame) {
+            prev = cur;
             cur = SDL_GetTicks();
 
             SDL_Event event;
@@ -68,6 +106,29 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
                     return true;
                 }
             }
+
+            // Move the window using deltatime
+            if (curX != endX) {
+                accumulatedX += pxPerMs * (cur - prev);
+
+                if (accumulatedX >= 1.0) {
+                    int toUse = (int) accumulatedX;
+                    accumulatedX -= toUse;
+                    curX += (sign * toUse);
+                }
+            } else if (curY != endY) {
+                accumulatedY += pxPerMs * (cur - prev);
+
+                if (accumulatedY >= 1.0) {
+                    int toUse = (int) accumulatedY;
+                    accumulatedY -= toUse;
+                    curY += (sign * toUse);
+                }
+            }
+            if (!SDL_SetWindowPosition(window, curX, curY)) {
+                printf("Failed to set window position.\n%s\n", SDL_GetError());
+            }
+            SDL_SyncWindow(window);
         }
     }
 
@@ -82,7 +143,7 @@ int main() {
         return 1;
     }
 
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", WIDTH, HEIGHT, SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", WIDTH, HEIGHT, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
     if (!window) {
         printf("Failed to create a window.\n");
         return 1;
@@ -108,7 +169,29 @@ int main() {
 
     while (true) {
         Direction randDir = (Direction) (SDL_rand(LENGTH));
-        if (move(person, randDir, window, windowSurface)) break;
+        int dist = SDL_rand(15) + 30;
+        if (move(person, randDir, window, windowSurface, dist)) break;
+
+        // Pause between moves
+        bool exiting = false;
+        int pauseMs = SDL_rand(500) + 1500;
+
+        unsigned long start = SDL_GetTicks();
+        unsigned long cur = start;
+        while ((cur - start) < pauseMs) {
+            cur = SDL_GetTicks();
+
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_EVENT_QUIT) {
+                    exiting = true;
+                    break;
+                }
+            }
+
+            if (exiting) break;
+        }
+        if (exiting) break;
     }
 
     // Clean up
