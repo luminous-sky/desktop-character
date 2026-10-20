@@ -1,2 +1,5 @@
 # Ignore builds
 build/
+
+# Hackatime ignores
+.wakatime-project
