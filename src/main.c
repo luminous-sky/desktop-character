@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
@@ -137,7 +138,9 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
 
 int main() {
     // On Linux, Wayland cannot set the position of the window, so X11 must be used
-    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+    if (!strcmp(SDL_GetPlatform(), "Linux")) {
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+    }
 
     // Initialize
     if (!SDL_Init(SDL_INIT_VIDEO)) {
