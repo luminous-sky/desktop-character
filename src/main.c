@@ -5,6 +5,7 @@
 
 #include "image.h"
 #include "character.h"
+#include "config.h"
 
 // Temporary variables
 const unsigned int WIDTH = 32;
@@ -162,15 +163,7 @@ int main() {
 
 
     // Create character
-    char *up = "./example/walk_up.png";
-    char *right = "./example/walk_right.png";
-    char *down = "./example/walk_down.png";
-    char *left = "./example/walk_left.png";
-    Character *person = createCharacter(up, right, down, left, windowSurface -> format, SPRITE_WIDTH, SPRITE_HEIGHT, FRAMES, MS_PER_FRAME);
-    if (!person) {
-        printf("Failed to load spritesheets.\nError: %s\n", SDL_GetError());
-        return 1;
-    }
+    Character *person = loadCharacter("./example/sample_config.charconf", windowSurface -> format);
 
     while (true) {
         Direction randDir = (Direction) (SDL_rand(LENGTH));
