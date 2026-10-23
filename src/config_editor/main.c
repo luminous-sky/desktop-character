@@ -70,18 +70,22 @@ bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Sur
 
 
 // Fixes Raylib's paths into just filenames
+char *convertPathToFilename(const char *path, unsigned int baseDirLen) {
+    int filenameLen = strlen(path);
+    int newLen = filenameLen - baseDirLen;
+
+    char *filename = malloc((newLen+1) * sizeof(char));
+    filename[newLen] = '\0';
+    memcpy(filename, path+baseDirLen, newLen);
+
+    return filename;
+}
+
 char **getFilenames(FilePathList files, unsigned int baseDirLen) {
     char **fixed = malloc(files.count * sizeof(char *));
     for (int i = 0; i < files.count; i++) {
         // Create a new string for each file
-        int filenameLen = strlen(files.paths[i]);
-        int newLen = filenameLen - baseDirLen;
-
-        char *filename = malloc((newLen+1) * sizeof(char));
-        filename[newLen] = '\0';
-        memcpy(filename, files.paths[i]+baseDirLen, newLen);
-
-        fixed[i] = filename;
+        fixed[i] = convertPathToFilename(files.paths[i], baseDirLen);
     }
 
     return fixed;
@@ -159,7 +163,7 @@ bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color la
     DrawText(label, labelX, labelY, labelSize, labelColor);
     int leftOffset = MeasureText(label, labelSize);
     
-    char *text = button -> filePath;
+    char *text = button -> buttonLabel;
     if (!text) text = "Select File";
 
     return GuiButton((Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, text);
@@ -168,10 +172,10 @@ bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color la
 
 Direction curSelected = 0;
 FileButton buttons[] = {
-    {NULL, "Up Spritesheet: "},
-    {NULL, "Right Spritesheet: "},
-    {NULL, "Down Spritesheet: "},
-    {NULL, "Left Spritesheet: "},
+    {NULL, "Up Spritesheet: ", NULL},
+    {NULL, "Right Spritesheet: ", NULL},
+    {NULL, "Down Spritesheet: ", NULL},
+    {NULL, "Left Spritesheet: ", NULL},
 };
 
 void drawMain() {
@@ -263,9 +267,17 @@ int main() {
                 } else {
                     // File was selected, set the current file
                     buttons[curSelected].filePath = files.paths[active];
+                    if (buttons[curSelected].buttonLabel) {
+                        free(buttons[curSelected].buttonLabel);
+                    }
+                    buttons[curSelected].buttonLabel = convertPathToFilename(files.paths[active], dirLen);
 
                     // Run exit operation
                     curMode = MAIN;
+
+                    scrollIndex = 0;
+                    active = -1;
+                    focus = -1;
                 }
             }
         }
@@ -283,6 +295,12 @@ int main() {
         free(curFilenames[i]);
     }
     free(curFilenames);
+
+    for (int i = 0; i < LENGTH; i++) {
+        if (buttons[i].buttonLabel) {
+            free(buttons[i].buttonLabel);
+        }
+    }
 
     CloseWindow();
 

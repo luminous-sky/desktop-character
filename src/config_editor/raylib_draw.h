@@ -7,6 +7,7 @@
 typedef struct FileButton {
     char *filePath;
     char *defaultLabel;
+    char *buttonLabel;
 } FileButton;
 
 
