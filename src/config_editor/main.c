@@ -90,11 +90,18 @@ char **getFilenames(FilePathList files, unsigned int baseDirLen) {
 // Window variables
 const int WIDTH = 640;
 const int HEIGHT = 480;
-const int TARGET_FPS = 10;
+const int TARGET_FPS = 60;
 
 // Text alignment variables
 const int INIT_Y = 88;
 const int LINE_SPACE = 24;
+
+// Different modes for what the window is currently showing
+typedef enum WINDOW_MODE {
+    MAIN,
+    FILE_SELECT,
+} WINDOW_MODE;
+WINDOW_MODE curMode = MAIN;
 
 // File listing varaibles
 char dir[MAX_FILENAME_LEN];
@@ -111,13 +118,14 @@ int scrollIndex = 0;
 int active = -1;
 int focus = -1;
 
-void drawMain() {
-    int centerX = WIDTH / 2;
-    int centerY = HEIGHT / 2;
+bool exitSelection = false;
+bool moveUpDir = false;
 
-    drawCenteredText("Desktop Character Editor", centerX, 48, 32, BLACK);
 
-    int numRows = drawTextWrappedAtSlash(dir, 35, 90, INIT_Y, LINE_SPACE, 24, BLACK);
+// Draws the file selection window
+void drawFileSelection() {
+    // Current directory
+    int numRows = drawTextWrappedAtSlash(dir, 35, 83, INIT_Y, LINE_SPACE, 24, BLACK);
     
     if (!curFilenames) {
         // Get first filenames
@@ -139,6 +147,40 @@ void drawMain() {
     Rectangle bounds = {35, 90 + numRows*LINE_SPACE, WIDTH - 70, HEIGHT-INIT_Y - (numRows+1)*LINE_SPACE};
     GuiSetStyle(LISTVIEW, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
     GuiListViewEx(bounds, curFilenames, numFiles, &scrollIndex, &active, &focus);
+
+    moveUpDir = GuiButton((Rectangle) {30, 90, 40, 40}, "<");
+    exitSelection = GuiButton((Rectangle) {WIDTH-30 - 40, 90, 40, 40}, "X");
+}
+
+
+char *leftSpritePath = NULL;
+char *leftSpriteName = "Select File";
+void drawMain() {
+    int centerX = WIDTH / 2;
+    int centerY = HEIGHT / 2;
+
+    drawCenteredText("Desktop Character Editor", centerX, 48, 32, BLACK);
+
+
+    switch (curMode) {
+        case MAIN:
+            bool selectFile = false;
+
+            DrawText("Left Spritesheet: ", 30, 90, 24, BLACK);
+            int leftOffset = MeasureText("Left Spritesheet: ", 24);
+            selectFile |= GuiButton((Rectangle) {30+leftOffset, 85, 80, 32}, leftSpriteName);
+
+            // Check if any buttons were pressed
+            if (selectFile) {
+                selectFile = false;
+                curMode = FILE_SELECT;
+            }
+
+            break;
+        case FILE_SELECT:
+            drawFileSelection();
+            break;
+    }
 }
 
 
@@ -154,45 +196,52 @@ int main() {
     
     files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
 
-    bool moveUpDir = false;
     while (!WindowShouldClose()) {
-        // Handle back button directory changes
-        if (moveUpDir) {
-            UnloadDirectoryFiles(files);
+        // File selection section
+        if (curMode == FILE_SELECT) {
+            // Handle exiting
+            if (exitSelection) {
+                exitSelection = false;
+                curMode = MAIN;
+            }
 
-            strcpy(dir, GetPrevDirectoryPath(dir));
-            dirLen = strlen(dir);
-            files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+            // Handle back button directory changes
+            if (moveUpDir) {
+                UnloadDirectoryFiles(files);
 
-            dirsUpdated = true;
+                strcpy(dir, GetPrevDirectoryPath(dir));
+                dirLen = strlen(dir);
+                files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
 
-            // Reset GUI state
-            scrollIndex = 0;
-            active = -1;
-            focus = -1;
-        }
+                dirsUpdated = true;
 
-        // Move into selected directory
-        if (active >= 0 && active < numFiles && DirectoryExists(files.paths[active])) {
-            strcpy(dir, files.paths[active]);
-            dirLen = strlen(dir);
+                // Reset GUI state
+                scrollIndex = 0;
+                active = -1;
+                focus = -1;
+            }
 
-            UnloadDirectoryFiles(files);
-            files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+            // Move into selected directory
+            if (active >= 0 && active < numFiles && DirectoryExists(files.paths[active])) {
+                strcpy(dir, files.paths[active]);
+                dirLen = strlen(dir);
 
-            dirsUpdated = true;
+                UnloadDirectoryFiles(files);
+                files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
 
-            // Reset GUI state
-            scrollIndex = 0;
-            active = -1;
-            focus = -1;
+                dirsUpdated = true;
+
+                // Reset GUI state
+                scrollIndex = 0;
+                active = -1;
+                focus = -1;
+            }
         }
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
+        
         drawMain();
-
-        moveUpDir = GuiButton((Rectangle) {30, 90, 40, 40}, "<");
 
         EndDrawing();
     }
