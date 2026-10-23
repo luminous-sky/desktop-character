@@ -8,6 +8,7 @@
 #include "raylib_draw.h"
 
 #include "../config.h"
+#include "../character.h"
 
 // Inclusive max filename length
 #define MAX_FILENAME_LEN 255
@@ -95,6 +96,7 @@ const int TARGET_FPS = 60;
 // Text alignment variables
 const int INIT_Y = 88;
 const int LINE_SPACE = 24;
+const int PADDING = 16;
 
 // Different modes for what the window is currently showing
 typedef enum WINDOW_MODE {
@@ -153,8 +155,25 @@ void drawFileSelection() {
 }
 
 
-char *leftSpritePath = NULL;
-char *leftSpriteName = "Select File";
+bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color labelColor, FileButton *button) {
+    DrawText(label, labelX, labelY, labelSize, labelColor);
+    int leftOffset = MeasureText(label, labelSize);
+    
+    char *text = button -> filePath;
+    if (!text) text = "Select File";
+
+    return GuiButton((Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, text);
+}
+
+
+Direction curSelected = 0;
+FileButton buttons[] = {
+    {NULL, "Up Spritesheet: "},
+    {NULL, "Right Spritesheet: "},
+    {NULL, "Down Spritesheet: "},
+    {NULL, "Left Spritesheet: "},
+};
+
 void drawMain() {
     int centerX = WIDTH / 2;
     int centerY = HEIGHT / 2;
@@ -166,9 +185,13 @@ void drawMain() {
         case MAIN:
             bool selectFile = false;
 
-            DrawText("Left Spritesheet: ", 30, 90, 24, BLACK);
-            int leftOffset = MeasureText("Left Spritesheet: ", 24);
-            selectFile |= GuiButton((Rectangle) {30+leftOffset, 85, 80, 32}, leftSpriteName);
+            for (int i = 0; i < LENGTH; i++) {
+                FileButton button = buttons[i];
+                if (drawFileButton(button.defaultLabel, 30, INIT_Y + i*LINE_SPACE + i*PADDING, 28, BLACK, &button)) {
+                    curSelected = i;
+                    selectFile = true;
+                }
+            }
 
             // Check if any buttons were pressed
             if (selectFile) {
@@ -221,20 +244,29 @@ int main() {
                 focus = -1;
             }
 
-            // Move into selected directory
-            if (active >= 0 && active < numFiles && DirectoryExists(files.paths[active])) {
-                strcpy(dir, files.paths[active]);
-                dirLen = strlen(dir);
+            // Check selected file
+            if (active >= 0 && active < numFiles) {
+                // Move into selected directory
+                if (DirectoryExists(files.paths[active])) {
+                    strcpy(dir, files.paths[active]);
+                    dirLen = strlen(dir);
 
-                UnloadDirectoryFiles(files);
-                files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+                    UnloadDirectoryFiles(files);
+                    files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
 
-                dirsUpdated = true;
+                    dirsUpdated = true;
 
-                // Reset GUI state
-                scrollIndex = 0;
-                active = -1;
-                focus = -1;
+                    // Reset GUI state
+                    scrollIndex = 0;
+                    active = -1;
+                    focus = -1;
+                } else {
+                    // File was selected, set the current file
+                    buttons[curSelected].filePath = files.paths[active];
+
+                    // Run exit operation
+                    curMode = MAIN;
+                }
             }
         }
 
