@@ -6,3 +6,7 @@ Instead, third-party libraries are expected to be either installed on the system
 Currently, the main and the editor program depend on the following libraries:
 - SDL3
 - SDL3_image
+
+The editor program also additionally depends on the following libraries:
+- raylib
+- raygui
