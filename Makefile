@@ -16,10 +16,10 @@ release:
 
 
 editor:
-	$(ARCH)$(CC) src/config_editor/*.c $(CFLAGS) $(CFLAGS_DEBUG) $(INCLUDE_DIRS) $(INCLUDES) $(EDITOR_INCLUDES) $(EXTRA_INCLUDES) -o build/editor
+	$(ARCH)$(CC) src/image.c src/character.c src/config.c src/config_editor/*.c $(CFLAGS) $(CFLAGS_DEBUG) $(INCLUDE_DIRS) $(INCLUDES) $(EDITOR_INCLUDES) $(EXTRA_INCLUDES) -o build/editor
 
 editor_release:
-	$(ARCH)$(CC) src/config_editor/*.c $(CFLAGS) $(CFLAGS_RELEASE) $(INCLUDE_DIRS) $(INCLUDES) $(EDITOR_INCLUDES) $(EXTRA_INCLUDES) -o build/editor
+	$(ARCH)$(CC) src/image.c src/character.c src/config.c src/config_editor/*.c $(CFLAGS) $(CFLAGS_RELEASE) $(INCLUDE_DIRS) $(INCLUDES) $(EDITOR_INCLUDES) $(EXTRA_INCLUDES) -o build/editor
 
 
 clean:

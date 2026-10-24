@@ -125,3 +125,113 @@ Character *loadCharacter(const char *filename, SDL_PixelFormat fmt) {
 
     return person;
 }
+
+
+void saveCharacter(const char *filename, char *up, char *right, char *down, char *left, unsigned char width, unsigned char height, unsigned char len, unsigned char fps) {
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        SDL_SetError("Failed to open character file");
+        return;
+    }
+
+    unsigned char buf[BUF_SIZE] = {0};
+    
+    // Write headers:
+    // Each parameter is 1 byte written in order
+    // Width, Height, Number of Frames, FPS
+    const unsigned int HEADER_LEN = 4;
+    buf[0] = width;
+    buf[1] = height;
+    buf[2] = len;
+    buf[3] = fps;
+    if (!fwrite(buf, HEADER_LEN, 1, file)) {
+        if (ferror(file)) {
+            SDL_SetError("Error while writing character file headers");
+            fclose(file);
+            return;
+        }
+    }
+
+    // Write filenames:
+    // Each filename is 1 byte for the length and then the filename itself
+    // Filenames are directioned, in order: up, right, down, left
+    Direction dir = UP;
+
+    // Iterate through all directions
+    int cur = 0;
+    while (dir < LENGTH) {
+        // Flush buffer
+        if (cur >= BUF_SIZE) {
+            if (!fwrite(buf, BUF_SIZE, 1, file) && ferror(file)) {
+                SDL_SetError("Error while writing to character file");
+                fclose(file);
+                return;
+            }
+
+            cur = 0;
+        }
+
+        // Get pointer to string
+        char **ptr = NULL;
+        switch (dir) {
+            case UP:
+                ptr = &up;
+                break;
+            case RIGHT:
+                ptr = &right;
+                break;
+            case DOWN:
+                ptr = &down;
+                break;
+            case LEFT:
+                ptr = &left;
+                break;
+            default:
+                break;
+        }
+        dir++;
+
+        if (*ptr == NULL) {
+            buf[cur] = 0;
+            cur++;
+            continue;
+        }
+
+        unsigned int filenameLen = strlen(*ptr);
+        if (filenameLen > 0xFF) {
+            SDL_SetError("Cannot write filenames longer than 256 bytes");
+            fclose(file);
+            return;
+        }
+
+        buf[cur] = (unsigned char) filenameLen;
+        cur++;
+
+        // Verify there's enough space remaining
+        if (cur+filenameLen >= BUF_SIZE) {
+            // Write early
+            if (!fwrite(buf, cur, 1, file) && ferror(file)) {
+                SDL_SetError("Error while writing to character file");
+                fclose(file);
+                return;
+            }
+
+            cur = 0;
+        }
+        memcpy(buf+cur, *ptr, filenameLen);
+        cur += filenameLen;
+    }
+    
+    // Last file write
+    if (cur != 0) {
+        if (!fwrite(buf, cur, 1, file) && ferror(file)) {
+            SDL_SetError("Error while writing to character file");
+            fclose(file);
+            return;
+        }
+
+        cur = 0;
+    }
+
+    fclose(file);
+}

@@ -91,6 +91,65 @@ char **getFilenames(FilePathList files, unsigned int baseDirLen) {
     return fixed;
 }
 
+// Converts absolute paths to a path relative to the current directory
+char *convertAbsolutePathToRelative(const char *absPath, const char *dir, unsigned int dirLen) {
+    unsigned int absPathLen = strlen(absPath);
+
+    // Fix the working directory to end in a slash
+    char dirFixed[dirLen+2];
+    dirFixed[dirLen+1] = '\0';
+    memcpy(dirFixed, dir, dirLen);
+
+    if (dir[dirLen] != '/') {
+        dirFixed[dirLen] = '/';
+    } else {
+        dirFixed[dirLen] = '\0';
+    }
+    
+    char *res = NULL;
+    
+    
+    // Match as much of the initial prefix as possible
+    unsigned int lastSlash = 0;
+    for (int i = 0; i < absPathLen && i < dirLen+1; i++) {
+        if (absPath[i] != '/' && absPath[i] != '\\') {
+            if (absPath[i] != dirFixed[i]) break;
+            continue;
+        }
+
+        lastSlash = i;
+    }
+
+    // Find how many slashes were skipped in the directory
+    unsigned int missingSlashes = 0;
+    for (int i = lastSlash; i < dirLen; i++) {
+        if (dir[i] != '/' && dir[i] != '\\') continue;
+        missingSlashes++;
+    }
+
+    // Calculate new string length
+    unsigned int newStrLen = lastSlash+1 + 3*missingSlashes + absPathLen-lastSlash;
+    res = malloc((newStrLen+1) * sizeof(char));
+    res[newStrLen] = '\0';
+
+    // Copy over parts
+    unsigned int cur = 0;
+    res[cur] = '.';
+    res[cur+1] = '/';
+    cur += 2;
+
+    for (int i = 0; i < missingSlashes; i++) {
+        res[cur] = '.';
+        res[cur+1] = '.';
+        res[cur+2] = '/';
+        cur += 3;
+    }
+
+    memcpy(res+cur, absPath + lastSlash+1, absPathLen - lastSlash);
+
+    return res;
+}
+
 
 // Window variables
 const int WIDTH = 640;
@@ -111,7 +170,9 @@ WINDOW_MODE curMode = MAIN;
 
 // File listing varaibles
 char dir[MAX_FILENAME_LEN];
+char workingDir[MAX_FILENAME_LEN];
 unsigned int dirLen = 0;
+unsigned int workingDirLen = 0;
 FilePathList files = {};
 
 // Current directory properties
@@ -221,6 +282,9 @@ int main() {
     strcpy(dir, GetWorkingDirectory());
     dirLen = strlen(dir);
     
+    strcpy(workingDir, dir);
+    workingDirLen = dirLen;
+    
     files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
 
     while (!WindowShouldClose()) {
@@ -266,7 +330,11 @@ int main() {
                     focus = -1;
                 } else {
                     // File was selected, set the current file
-                    buttons[curSelected].filePath = files.paths[active];
+                    if (buttons[curSelected].filePath) {
+                        free(buttons[curSelected].filePath);
+                    }
+                    buttons[curSelected].filePath = convertAbsolutePathToRelative(files.paths[active], workingDir, workingDirLen);
+                    
                     if (buttons[curSelected].buttonLabel) {
                         free(buttons[curSelected].buttonLabel);
                     }
@@ -290,6 +358,9 @@ int main() {
         EndDrawing();
     }
 
+    // Save data temporarily
+    saveCharacter("test.charconf", (buttons[0].filePath), (buttons[1].filePath), (buttons[2].filePath), (buttons[3].filePath), 32, 32, 4, 4);
+
     // Clean up
     for (int i = 0; i < numFiles; i++) {
         free(curFilenames[i]);
@@ -297,6 +368,10 @@ int main() {
     free(curFilenames);
 
     for (int i = 0; i < LENGTH; i++) {
+        if (buttons[i].filePath) {
+            free(buttons[i].filePath);
+        }
+
         if (buttons[i].buttonLabel) {
             free(buttons[i].buttonLabel);
         }
