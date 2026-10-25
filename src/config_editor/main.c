@@ -247,6 +247,7 @@ void drawMain() {
     switch (curMode) {
         case MAIN:
             bool selectFile = false;
+            bool saveFile = false;
 
             for (int i = 0; i < LENGTH; i++) {
                 FileButton button = buttons[i];
@@ -269,10 +270,28 @@ void drawMain() {
                 inputs[i] = input;
             }
 
+            yOffset += NUM_INPUTS*LINE_SPACE + NUM_INPUTS*PADDING;
+            saveFile = GuiButton((Rectangle) {centerX-90, yOffset, 180, 40}, "Save configuration");
+
             // Check if any buttons were pressed
             if (selectFile) {
                 selectFile = false;
                 curMode = FILE_SELECT;
+            }
+
+            if (saveFile) {
+                // Save data
+                saveCharacter(
+                    "config.charconf",
+                    buttons[UP].filePath,
+                    buttons[RIGHT].filePath,
+                    buttons[DOWN].filePath,
+                    buttons[LEFT].filePath,
+                    // Width and height
+                    inputs[0].value, inputs[1].value,
+                    // Number of frames, FPS
+                    inputs[2].value, inputs[3].value
+                );
             }
 
             break;
@@ -368,19 +387,6 @@ int main() {
 
         EndDrawing();
     }
-
-    // Save data
-    saveCharacter(
-        "config.charconf",
-        buttons[UP].filePath,
-        buttons[RIGHT].filePath,
-        buttons[DOWN].filePath,
-        buttons[LEFT].filePath,
-        // Width and height
-        inputs[0].value, inputs[1].value,
-        // Number of frames, FPS
-        inputs[2].value, inputs[3].value
-    );
 
     // Clean up
     for (int i = 0; i < numFiles; i++) {
