@@ -231,12 +231,29 @@ bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color la
 }
 
 
+bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color labelColor, ValueInput *input) {
+    DrawText(label, labelX, labelY, labelSize, labelColor);
+    int leftOffset = MeasureText(label, labelSize);
+
+    return GuiValueBox((Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, "", &(input -> value), input -> minValue, input -> maxValue, input -> isEditing);
+}
+
+
 Direction curSelected = 0;
 FileButton buttons[] = {
     {NULL, "Up Spritesheet: ", NULL},
     {NULL, "Right Spritesheet: ", NULL},
     {NULL, "Down Spritesheet: ", NULL},
     {NULL, "Left Spritesheet: ", NULL},
+};
+
+// Ordered: width, height, numFrames, FPS
+const int NUM_INPUTS = 4;
+ValueInput inputs[] = {
+    {"Width: ", 1, 255, 1, false},
+    {"Height: ", 1, 255, 1, false},
+    {"# of Frames: ", 1, 255, 1, false},
+    {"FPS: ", 1, 255, 1, false},
 };
 
 void drawMain() {
@@ -256,6 +273,19 @@ void drawMain() {
                     curSelected = i;
                     selectFile = true;
                 }
+            }
+
+            int yOffset = INIT_Y + LENGTH*LINE_SPACE + LENGTH*PADDING;
+            for (int i = 0; i < NUM_INPUTS; i++) {
+                ValueInput input = inputs[i];
+                
+                bool toggled = drawValueInput(input.defaultLabel, 30, yOffset + i*LINE_SPACE + i*PADDING, 28, BLACK, &input);
+                if (toggled) {
+                    input.isEditing = !input.isEditing;
+                }
+
+                // Fix for pass-by-value errors
+                inputs[i] = input;
             }
 
             // Check if any buttons were pressed
@@ -358,8 +388,18 @@ int main() {
         EndDrawing();
     }
 
-    // Save data temporarily
-    saveCharacter("test.charconf", (buttons[0].filePath), (buttons[1].filePath), (buttons[2].filePath), (buttons[3].filePath), 32, 32, 4, 4);
+    // Save data
+    saveCharacter(
+        "test.charconf",
+        buttons[UP].filePath,
+        buttons[RIGHT].filePath,
+        buttons[DOWN].filePath,
+        buttons[LEFT].filePath,
+        // Width and height
+        inputs[0].value, inputs[1].value,
+        // Number of frames, FPS
+        inputs[2].value, inputs[3].value
+    );
 
     // Clean up
     for (int i = 0; i < numFiles; i++) {
