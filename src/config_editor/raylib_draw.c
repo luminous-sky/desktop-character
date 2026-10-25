@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <raygui.h>
 #include <string.h>
 
 #include "raylib_draw.h"
@@ -83,3 +84,33 @@ int drawTextWrappedAtSlash(char *text, int maxRowChars, int x, int y, int deltaY
     // Return how many rows were used
     return rowCount+1;
 }
+
+
+// Draws the FileButton struct
+bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color labelColor, FileButton *button) {
+    DrawText(label, labelX, labelY, labelSize, labelColor);
+    int leftOffset = MeasureText(label, labelSize);
+    
+    char *text = button -> buttonLabel;
+    if (!text) text = "Select File";
+
+    return GuiButton(
+        (Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, text
+    );
+}
+
+
+// Draws the ValueInput struct
+bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color labelColor, ValueInput *input) {
+    DrawText(label, labelX, labelY, labelSize, labelColor);
+    int leftOffset = MeasureText(label, labelSize);
+
+    return GuiValueBox(
+        (Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, "",
+        &(input -> value),
+        input -> minValue,
+        input -> maxValue,
+        input -> isEditing
+    );
+}
+

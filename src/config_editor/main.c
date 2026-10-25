@@ -112,12 +112,12 @@ char *convertAbsolutePathToRelative(const char *absPath, const char *dir, unsign
     // Match as much of the initial prefix as possible
     unsigned int lastSlash = 0;
     for (int i = 0; i < absPathLen && i < dirLen+1; i++) {
-        if (absPath[i] != '/' && absPath[i] != '\\') {
-            if (absPath[i] != dirFixed[i]) break;
+        if (absPath[i] == '/' || absPath[i] == '\\') {
+            lastSlash = i;
             continue;
         }
 
-        lastSlash = i;
+        if (absPath[i] != dirFixed[i]) break;
     }
 
     // Find how many slashes were skipped in the directory
@@ -217,25 +217,6 @@ void drawFileSelection() {
 
     moveUpDir = GuiButton((Rectangle) {30, 90, 40, 40}, "<");
     exitSelection = GuiButton((Rectangle) {WIDTH-30 - 40, 90, 40, 40}, "X");
-}
-
-
-bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color labelColor, FileButton *button) {
-    DrawText(label, labelX, labelY, labelSize, labelColor);
-    int leftOffset = MeasureText(label, labelSize);
-    
-    char *text = button -> buttonLabel;
-    if (!text) text = "Select File";
-
-    return GuiButton((Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, text);
-}
-
-
-bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color labelColor, ValueInput *input) {
-    DrawText(label, labelX, labelY, labelSize, labelColor);
-    int leftOffset = MeasureText(label, labelSize);
-
-    return GuiValueBox((Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, "", &(input -> value), input -> minValue, input -> maxValue, input -> isEditing);
 }
 
 

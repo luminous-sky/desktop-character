@@ -25,4 +25,7 @@ void drawCenteredText(char *text, int centerX, int centerY, int size, Color colo
 int drawTextWrapped(char *text, int maxRowChars, int x, int y, int deltaY, int size, Color color);
 int drawTextWrappedAtSlash(char *text, int maxRowChars, int x, int y, int deltaY, int size, Color color);
 
+bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color labelColor, FileButton *button);
+bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color labelColor, ValueInput *input);
+
 #endif
