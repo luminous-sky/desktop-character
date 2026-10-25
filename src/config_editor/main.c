@@ -371,7 +371,7 @@ int main() {
 
     // Save data
     saveCharacter(
-        "test.charconf",
+        "config.charconf",
         buttons[UP].filePath,
         buttons[RIGHT].filePath,
         buttons[DOWN].filePath,

@@ -163,7 +163,7 @@ int main() {
 
 
     // Create character
-    Character *person = loadCharacter("./example/sample_config.charconf", windowSurface -> format);
+    Character *person = loadCharacter("./config.charconf", windowSurface -> format);
 
     while (true) {
         Direction randDir = (Direction) (SDL_rand(LENGTH));
