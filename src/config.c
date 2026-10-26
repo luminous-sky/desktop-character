@@ -235,3 +235,43 @@ void saveCharacter(const char *filename, char *up, char *right, char *down, char
 
     fclose(file);
 }
+
+
+CharacterDimensions *loadCharacterDimensions(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        SDL_SetError("Failed to load character file");
+        return NULL;
+    }
+
+
+    unsigned char buf[BUF_SIZE] = {0};
+
+    // Read headers:
+    // Each parameter is 1 byte read in order
+    // Width, Height, Number of Frames, FPS
+    const unsigned int HEADER_LEN = 4;
+    if (!fread(buf, HEADER_LEN, 1, file)) {
+        if (feof(file)) {
+            SDL_SetError("Character file ended unexpectedly while reading headers");
+        } else if (ferror(file)) {
+            SDL_SetError("Error while reading character file headers");
+        }
+
+        fclose(file);
+        return NULL;
+    }
+
+    CharacterDimensions *created = malloc(sizeof(CharacterDimensions));
+
+    created -> width = buf[0];
+    created -> height = buf[0];
+
+    fclose(file);
+
+    return created;
+}
+
+void destroyCharacterDimensions(CharacterDimensions *ptr) {
+    if (ptr) free(ptr);
+}

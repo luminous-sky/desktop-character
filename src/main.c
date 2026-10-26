@@ -7,18 +7,6 @@
 #include "character.h"
 #include "config.h"
 
-// Temporary variables
-const unsigned int WIDTH = 32;
-const unsigned int HEIGHT = 32;
-
-// Spritesheet information
-const unsigned int SPRITE_WIDTH = 32;
-const unsigned int SPRITE_HEIGHT = 32;
-const unsigned int FRAMES = 4;
-
-// 4 FPS
-const Uint64 MS_PER_FRAME = 250;
-
 
 // Returns whether the exit event was sent during the movement
 bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface, int moveOffset) {
@@ -148,8 +136,12 @@ int main() {
         printf("Failed to initialize SDL.\n");
         return 1;
     }
+    
+    CharacterDimensions *spriteSize = loadCharacterDimensions("./config.charconf");
 
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", WIDTH, HEIGHT, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", spriteSize -> width, spriteSize -> height, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    destroyCharacterDimensions(spriteSize);
+    spriteSize = NULL;
     if (!window) {
         printf("Failed to create a window.\n");
         return 1;
@@ -160,7 +152,6 @@ int main() {
         printf("Failed to get the window's surface.\n");
         return 1;
     }
-
 
     // Create character
     Character *person = loadCharacter("./config.charconf", windowSurface -> format);

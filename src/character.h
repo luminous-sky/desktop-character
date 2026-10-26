@@ -12,6 +12,8 @@ typedef struct Character {
     SDL_Surface **left;
 
     // Animation details
+    unsigned int width;
+    unsigned int height;
     unsigned int len;
     unsigned int msPerFrame;
 } Character;
