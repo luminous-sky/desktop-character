@@ -1,11 +1,11 @@
 #include <stdio.h>
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
 
 #include <raylib.h>
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 #include "raylib_draw.h"
+
+#include "preview.h"
 
 #include "../config.h"
 #include "../character.h"
@@ -13,60 +13,6 @@
 // Inclusive max filename length
 #define MAX_FILENAME_LEN 255
 #define FILE_FILTER "DIRS*;.png;.jpg;.jpeg;.bmp"
-
-
-// Returns whether the exit event was sent during the movement (from main.c)
-bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface) {
-    SDL_Surface **sprites = NULL;
-    switch (dir) {
-        case UP:
-            sprites = person -> up;
-            break;
-        case RIGHT:
-            sprites = person -> right;
-            break;
-        case DOWN:
-            sprites = person -> down;
-            break;
-        case LEFT:
-            sprites = person -> left;
-            break;
-        default:
-            break;
-    }
-
-    if (!sprites) {
-        SDL_SetError("The character's sprites failed to load.\n");
-        return false;
-    }
-
-    for (int i = 0; i < person -> len; i++) {
-        // Clear background
-        SDL_ClearSurface(windowSurface, 0.0, 0.0, 0.0, 0.0);
-
-        // Render sprite
-        if (!SDL_BlitSurface(sprites[i], NULL, windowSurface, NULL)) {
-            printf("Failed to blit surface.\n%s\n", SDL_GetError());
-            return 2;
-        }
-
-        SDL_UpdateWindowSurface(window);
-
-        // Delay
-        unsigned long start = SDL_GetTicks();
-        unsigned long cur = start;
-        while ((cur - start) < person -> msPerFrame) {
-            cur = SDL_GetTicks();
-
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                if (event.type == SDL_EVENT_QUIT) return true;
-            }
-        }
-    }
-
-    return false;
-}
 
 
 // Fixes Raylib's paths into just filenames
@@ -248,6 +194,7 @@ void drawMain() {
         case MAIN:
             bool selectFile = false;
             bool saveFile = false;
+            bool preview = false;
 
             for (int i = 0; i < LENGTH; i++) {
                 FileButton button = buttons[i];
@@ -272,6 +219,8 @@ void drawMain() {
 
             yOffset += NUM_INPUTS*LINE_SPACE + NUM_INPUTS*PADDING;
             saveFile = GuiButton((Rectangle) {centerX-90, yOffset, 180, 40}, "Save configuration");
+            // saveFile = GuiButton((Rectangle) {centerX-90 - 120, yOffset, 180, 40}, "Save configuration");
+            // preview = GuiButton((Rectangle) {centerX-90 + 120, yOffset, 180, 40}, "See configuration");
 
             // Check if any buttons were pressed
             if (selectFile) {
@@ -290,6 +239,17 @@ void drawMain() {
                     // Width and height
                     inputs[0].value, inputs[1].value,
                     // Number of frames, FPS
+                    inputs[2].value, inputs[3].value
+                );
+            }
+
+            if (preview) {
+                showPreview(
+                    buttons[UP].filePath,
+                    buttons[RIGHT].filePath,
+                    buttons[DOWN].filePath,
+                    buttons[LEFT].filePath,
+                    inputs[0].value, inputs[1].value,
                     inputs[2].value, inputs[3].value
                 );
             }
