@@ -8,9 +8,10 @@
 #include "config.h"
 
 
-// Returns whether the exit event was sent during the movement
-bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface, int moveOffset) {
-    double pxPerMs = (double) moveOffset / ((person -> msPerFrame) * (person -> len));
+// Returns whether the entire animation finished cycling
+bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface, int moveOffset, int *endX, int *endY, unsigned int *curFrame, unsigned int *t1, unsigned int *t2) {
+    unsigned int msPerFrame = person -> msPerFrame;
+    unsigned int msPerPx = ((msPerFrame * (person -> len))) / moveOffset;
     
     int curX, curY;
     if(!SDL_GetWindowPosition(window, &curX, &curY)) {
@@ -18,50 +19,63 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
         return true;
     }
 
-    int sign = 1;
-    int endX = curX;
-    int endY = curY;
-
-    // Accumulation of pixel change
-    double accumulatedX = 0;
-    double accumulatedY = 0;
-    
+    // Get sprite direction
     SDL_Surface **sprites = NULL;
+    int sign = 1;
     switch (dir) {
         case UP:
             sprites = person -> up;
-            endY -= moveOffset;
             sign = -1;
             break;
         case RIGHT:
             sprites = person -> right;
-            endX += moveOffset;
             break;
         case DOWN:
             sprites = person -> down;
-            endY += moveOffset;
             break;
         case LEFT:
             sprites = person -> left;
-            endX -= moveOffset;
             sign = -1;
             break;
         default:
             break;
     }
-
-
+    
+    
     // Clamp bounds (assuming the first display is used)
     const SDL_DisplayMode *display = SDL_GetCurrentDisplayMode(1);
     if (!display) {
         printf("Failed to get display.\nError: %s\n", SDL_GetError());
         return true;
     }
+    
+    // Recalculate end points at start
+    if (*endX < 0 || *endY < 0) {
+        *endX = curX;
+        *endY = curY;
 
-    if (endX < 0) endX = 0;
-    if (endX > display -> w) endX = display -> w;
-    if (endY < 0) endY = 0;
-    if (endY > display -> h) endY = display -> h;
+        switch (dir) {
+            case UP:
+                *endY -= moveOffset;
+                break;
+            case RIGHT:
+                *endX += moveOffset;
+                break;
+            case DOWN:
+                *endY += moveOffset;
+                break;
+            case LEFT:
+                *endX -= moveOffset;
+                break;
+            default:
+                break;
+        }
+
+        if (*endX < 0) *endX = 0;
+        if (*endX > display -> w) *endX = display -> w;
+        if (*endY < 0) *endY = 0;
+        if (*endY > display -> h) *endY = display -> h;
+    }
 
 
     if (!sprites) {
@@ -69,59 +83,45 @@ bool move(Character *person, Direction dir, SDL_Window *window, SDL_Surface *win
         return false;
     }
 
-    for (int i = 0; i < person -> len; i++) {
-        // Clear background
-        SDL_ClearSurface(windowSurface, 0.0, 0.0, 0.0, 0.0);
+    // Pick the next frame once msPerFrame goes over
+    if (*t1 >= msPerFrame) {
+        *curFrame = (*curFrame + 1) % (person -> len);
+        *t1 %= msPerFrame;
+    }
 
-        // Render sprite
-        if (!SDL_BlitSurface(sprites[i], NULL, windowSurface, NULL)) {
-            printf("Failed to blit surface.\n%s\n", SDL_GetError());
-            return 2;
-        }
+    // Clear background
+    SDL_ClearSurface(windowSurface, 0.0, 0.0, 0.0, 0.0);
 
-        SDL_UpdateWindowSurface(window);
+    // Render sprite
+    if (!SDL_BlitSurface(sprites[*curFrame], NULL, windowSurface, NULL)) {
+        printf("Failed to blit surface.\n%s\n", SDL_GetError());
+        return 2;
+    }
 
-        // Delay
-        unsigned long start = SDL_GetTicks();
-        unsigned long prev = start;
-        unsigned long cur = start;
-        while ((cur - start) < person -> msPerFrame) {
-            prev = cur;
-            cur = SDL_GetTicks();
+    SDL_UpdateWindowSurface(window);
 
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                if (event.type == SDL_EVENT_QUIT) {
-                    return true;
-                }
-            }
 
-            // Move the window using deltatime
-            if (curX != endX) {
-                accumulatedX += pxPerMs * (cur - prev);
+    // Render movement once enough time has elapsed to move >1 px
+    bool finished = false;
+    if (*t2 >= msPerPx) {
+        int displacement = (*t2) / msPerPx;
+        *t2 %= msPerPx;
 
-                if (accumulatedX >= 1.0) {
-                    int toUse = (int) accumulatedX;
-                    accumulatedX -= toUse;
-                    curX += (sign * toUse);
-                }
-            } else if (curY != endY) {
-                accumulatedY += pxPerMs * (cur - prev);
-
-                if (accumulatedY >= 1.0) {
-                    int toUse = (int) accumulatedY;
-                    accumulatedY -= toUse;
-                    curY += (sign * toUse);
-                }
-            }
-            if (!SDL_SetWindowPosition(window, curX, curY)) {
-                printf("Failed to set window position.\n%s\n", SDL_GetError());
-            }
-            SDL_SyncWindow(window);
+        if (sign * (*endX - curX) > 0) {
+            curX += (sign * displacement);
+        } else if (sign * (*endY - curY) > 0) {
+            curY += (sign * displacement);
+        } else {
+            finished = true;
         }
     }
 
-    return false;
+    if (!SDL_SetWindowPosition(window, curX, curY)) {
+        printf("Failed to set window position.\n%s\n", SDL_GetError());
+    }
+    SDL_SyncWindow(window);
+
+    return finished;
 }
 
 
@@ -129,8 +129,19 @@ typedef struct MainLoopArgs {
     SDL_Window *window;
     SDL_Surface *windowSurface;
     Character *person;
+
+    unsigned long *prev;
     unsigned long *start;
+    unsigned int *t1;
+    unsigned int *t2;
+    unsigned int *curFrame;
     int *curPauseMs;
+
+    int *endX;
+    int *endY;
+
+    Direction curMoveDir;
+    int curMoveOffset;
 } MainLoopArgs;
 
 
@@ -141,28 +152,54 @@ bool mainLoop(void *argStruct) {
     SDL_Window *window = args -> window;
     SDL_Surface *windowSurface = args -> windowSurface;
     Character *person = args -> person;
+
+    unsigned long *prev = args -> prev;
     unsigned long *start = args -> start;
+    unsigned int *t1 = args -> t1;
+    unsigned int *t2 = args -> t2;
+    unsigned int *curFrame = args -> curFrame;
     int *curPauseMs = args -> curPauseMs;
+
+    int *endX = args -> endX;
+    int *endY = args -> endY;
+    
+    Direction curMoveDir = args -> curMoveDir;
+    int curMoveOffset = args -> curMoveOffset;
 
     unsigned long curTime = SDL_GetTicks();
 
 
     // *curPauseMs < 0 only after the pause time is reset
     if (*curPauseMs < 0) {
-        // Move
-        Direction randDir = (Direction) (SDL_rand(LENGTH));
-        int dist = SDL_rand(15) + 30;
-        if (move(person, randDir, window, windowSurface, dist)) return true;
+        // Update counters
+        *t1 += (curTime - *prev);
+        *t2 += (curTime - *prev);
 
-        // Setup pause between moves
-        *curPauseMs = SDL_rand(500) + 1500;
-        *start = SDL_GetTicks();
+        // Move
+        if (move(person, curMoveDir, window, windowSurface, curMoveOffset, endX, endY, curFrame, t1, t2)) {
+            // Movement finished, reset variables
+            *curFrame = 0;
+            *t1 = 0;
+            *t2 = 0;
+
+            *endX = -1;
+            *endY = -1;
+
+            args -> curMoveDir = (Direction) (SDL_rand(LENGTH));
+            args -> curMoveOffset = SDL_rand(15) + 30;
+
+            // Setup pause between moves
+            *curPauseMs = SDL_rand(500) + 1500;
+            *start = SDL_GetTicks();
+        }
     } else {
         // Reset pause time once finished
         if ((curTime - *start) >= *curPauseMs) {
             *curPauseMs = -1;
         }
     }
+
+    *prev = curTime;
 
     
     // Read events
@@ -212,19 +249,30 @@ int main() {
     Character *person = loadCharacter("./config.charconf", windowSurface -> format);
 
     // Create arg struct
+    unsigned long prev = 0;
     unsigned long start = 0;
+    unsigned int t1 = 0;
+    unsigned int t2 = 0;
+    unsigned int curFrame = 0;
+    int endX = -1;
+    int endY = -1;
     int curPauseMs = -1;
     MainLoopArgs argStruct = {
         window,
         windowSurface,
         person,
-        &start,
-        &curPauseMs
+        &prev, &start,
+        &t1, &t2,
+        &curFrame,
+        &curPauseMs,
+        &endX, &endY,
+        (Direction) (SDL_rand(LENGTH)),
+        SDL_rand(15) + 30,
     };
-    MainLoopArgs *argRef = &argStruct;
+    void *argRef = &argStruct;
 
     #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(mainLoop, 0, 1);
+    emscripten_set_main_loop_arg(mainLoop, argRef, 0, 1);
     #else
     while (true) {
         if (mainLoop(argRef)) break;
