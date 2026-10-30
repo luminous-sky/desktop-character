@@ -6,91 +6,126 @@
 #include "image.h"
 #include "character.h"
 #include "config.h"
+#include "main_args.h"
 
 
 // Returns whether the entire animation finished cycling
-bool move(Character *person, Direction dir, int displayW, int displayH, SDL_Window *window, SDL_Surface *windowSurface, int moveOffset, int *endX, int *endY, unsigned int *curFrame, unsigned int *t1, unsigned int *t2, bool initCall) {
-    unsigned int msPerFrame = person -> msPerFrame;
-    unsigned int msPerPx = ((msPerFrame * (person -> len))) / moveOffset;
-    
-    int curX, curY;
-    if(!SDL_GetWindowPosition(window, &curX, &curY)) {
-        printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
-        return true;
-    }
+bool move(WindowDetails *windowInfo, AnimDetails *animation, unsigned long deltaTime) {
+    int displayW = windowInfo -> displayW;
+    int displayH = windowInfo -> displayH;
 
-    // Get sprite direction
-    SDL_Surface **sprites = NULL;
-    int sign = 1;
-    switch (dir) {
-        case UP:
-            sprites = person -> up;
-            sign = -1;
-            break;
-        case RIGHT:
-            sprites = person -> right;
-            break;
-        case DOWN:
-            sprites = person -> down;
-            break;
-        case LEFT:
-            sprites = person -> left;
-            sign = -1;
-            break;
-        default:
-            break;
-    }
-    
-    // Recalculate end points at start
-    if (*endX < 0 || *endY < 0) {
-        *endX = curX;
-        *endY = curY;
+    SDL_Window *window = windowInfo -> window;
+    SDL_Surface *windowSurface = windowInfo -> windowSurface;
 
-        switch (dir) {
+    Character *person = animation -> person;
+
+    // Check this is the first animation call
+    bool initCall = false;
+
+    if (animation -> hasDrawn == false) {
+        animation -> hasDrawn = true;
+        initCall = true;
+
+        int curX, curY;
+        if(!SDL_GetWindowPosition(window, &curX, &curY)) {
+            printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
+            return true;
+        }
+
+        
+        // Set directional variables
+        int curOffset = SDL_rand(15) + 30;
+        animation -> curFrame = 0;
+        animation -> curDir = (Direction) (SDL_rand(LENGTH));
+
+        int tempX, tempY;
+        switch (animation -> curDir) {
             case UP:
-                *endY -= moveOffset;
+                animation -> curSprite = person -> up;
+                tempX = curX;
+                tempY = curY - curOffset;
                 break;
             case RIGHT:
-                *endX += moveOffset;
+                animation -> curSprite = person -> right;
+                tempX = curX + curOffset;
+                tempY = curY;
                 break;
             case DOWN:
-                *endY += moveOffset;
+                animation -> curSprite = person -> down;
+                tempX = curX;
+                tempY = curY + curOffset;
                 break;
             case LEFT:
-                *endX -= moveOffset;
+                animation -> curSprite = person -> left;
+                tempX = curX - curOffset;
+                tempY = curY;
                 break;
             default:
                 break;
         }
 
-        if (*endX < 0) *endX = 0;
-        if (*endX > displayW) *endX = displayW;
-        if (*endY < 0) *endY = 0;
-        if (*endY > displayW) *endY = displayW;
+        if (tempX < 0) {
+            curOffset = curX;
+            tempX = 0;
+        }
+        if (tempY < 0) {
+            curOffset = curY;
+            tempY = 0;
+        }
+        if (tempX > displayW) {
+            curOffset = displayW - curX;
+            tempX = displayW;
+        }
+        if (tempY > displayH) {
+            curOffset = displayH - curY;
+            tempY = displayH;
+        }
+        animation -> curOffset = curOffset;
+
+        animation -> endX = tempX;
+        animation -> endY = tempY;
+
+
+        // Set time counters
+        TimeCounter spriteCtr = animation -> spriteCtr;
+        spriteCtr.curMs = 0;
+        spriteCtr.maxMs = person -> msPerFrame;
+        animation -> spriteCtr = spriteCtr;
+
+        TimeCounter moveCtr = animation -> moveCtr;
+        moveCtr.curMs = 0;
+        moveCtr.maxMs = (person -> msPerFrame) * (person -> len) / (curOffset);
+        animation -> moveCtr = moveCtr;
     }
 
 
-    if (!sprites) {
-        SDL_SetError("The character's sprites failed to load.\n");
-        return false;
-    }
+    // Check if the next frame should be drawn
+    TimeCounter spriteCtr = animation -> spriteCtr;
+    spriteCtr.curMs += deltaTime;
 
-    // Pick the next frame once msPerFrame goes over
-    bool redrawSprite = false;
-    if (*t1 >= msPerFrame) {
-        *curFrame = (*curFrame + 1) % (person -> len);
-        *t1 %= msPerFrame;
-        
-        redrawSprite = true;
-    }
+    bool drawNext = false;
+    if (spriteCtr.curMs >= spriteCtr.maxMs) {
+        (animation -> curFrame) += (spriteCtr.curMs / spriteCtr.maxMs);
+        (animation -> curFrame) %= (person -> len);
 
-    // Only redraw the surface when the sprite actually updates (costly operation)
-    if (redrawSprite || initCall) {
+        spriteCtr.curMs %= spriteCtr.maxMs;
+        drawNext = true;
+    }
+    animation -> spriteCtr = spriteCtr;
+
+    if (drawNext || initCall) {
+        SDL_Surface **sprites = animation -> curSprite;
+        if (!sprites) {
+            SDL_SetError("The character's sprites failed to load.\n");
+            return false;
+        }
+
         // Clear background
         SDL_ClearSurface(windowSurface, 0.0, 0.0, 0.0, 0.0);
 
         // Render sprite
-        if (!SDL_BlitSurface(sprites[*curFrame], NULL, windowSurface, NULL)) {
+        int curFrame = animation -> curFrame;
+        if (!SDL_BlitSurface(sprites[curFrame], NULL, windowSurface, NULL)) {
             printf("Failed to blit surface.\n%s\n", SDL_GetError());
             return 2;
         }
@@ -99,122 +134,114 @@ bool move(Character *person, Direction dir, int displayW, int displayH, SDL_Wind
     }
 
 
-    // Render movement once enough time has elapsed to move >1 px
-    bool finished = false;
-    if (*t2 >= msPerPx) {
-        int displacement = (*t2) / msPerPx;
-        *t2 -= displacement*msPerPx;
+    // Check if the window should be moved
+    bool moveWindow = false;
+    int curX, curY;
+    int signX, signY;
 
-        if (sign * (*endX - curX) > 0) {
-            curX += (sign * displacement);
-        } else if (sign * (*endY - curY) > 0) {
-            curY += (sign * displacement);
-        } else {
-            finished = true;
+    switch (animation -> curDir) {
+        case UP:
+            signX = 0;
+            signY = -1;
+            break;
+        case RIGHT:
+            signX = 1;
+            signY = 0;
+            break;
+        case DOWN:
+            signX = 0;
+            signY = 1;
+            break;
+        case LEFT:
+            signX = -1;
+            signY = 0;
+            break;
+        default:
+            break;
+    }
+
+    TimeCounter moveCtr = animation -> moveCtr;
+    moveCtr.curMs += deltaTime;
+
+    int displacement = 0;
+    if (moveCtr.curMs >= moveCtr.maxMs) {
+        displacement = moveCtr.curMs / moveCtr.maxMs;
+        moveCtr.curMs %= moveCtr.maxMs;
+        moveWindow = true;
+    }
+
+    if (moveWindow || initCall) {
+        if(!SDL_GetWindowPosition(window, &curX, &curY)) {
+            printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
+            return true;
         }
 
+        curX += (signX * displacement);
+        curY += (signY * displacement);
+    }
+    animation -> moveCtr = moveCtr;
+
+
+    // Render movement once enough time has elapsed to move >1 px
+    bool finished = false;
+    if (moveWindow || initCall) {
         // Only set the window's position and sync it when it moves (costly operation)
         if (!SDL_SetWindowPosition(window, curX, curY)) {
             printf("Failed to set window position.\n%s\n", SDL_GetError());
         }
         SDL_SyncWindow(window);
+
+        if (signX * (curX - (animation -> endX)) >= 0 && signY * (curY - (animation -> endY)) >= 0) {
+            finished = true;
+        }
     }
 
     return finished;
 }
 
 
-typedef struct MainLoopArgs {
-    int displayW;
-    int displayH;
-    SDL_Window *window;
-    SDL_Surface *windowSurface;
-    Character *person;
-
-    unsigned long *prev;
-    unsigned long *start;
-    unsigned int *t1;
-    unsigned int *t2;
-    unsigned int *curFrame;
-    int *curPauseMs;
-
-    bool hasDrawn;
-
-    int *endX;
-    int *endY;
-
-    Direction curMoveDir;
-    int curMoveOffset;
-} MainLoopArgs;
-
-
 // Returns whether an exit-related signal was sent
 bool mainLoop(void *argStruct) {
     MainLoopArgs *args = (MainLoopArgs *) argStruct;
 
-    int displayW = args -> displayW;
-    int displayH = args -> displayH;
-    SDL_Window *window = args -> window;
-    SDL_Surface *windowSurface = args -> windowSurface;
-    Character *person = args -> person;
+    unsigned long *prevTime = args -> prevTime;
+    unsigned long *curTime = args -> curTime;
 
-    unsigned long *prev = args -> prev;
-    unsigned long *start = args -> start;
-    unsigned int *t1 = args -> t1;
-    unsigned int *t2 = args -> t2;
-    unsigned int *curFrame = args -> curFrame;
-    int *curPauseMs = args -> curPauseMs;
-
-    int *endX = args -> endX;
-    int *endY = args -> endY;
-
-    bool hasDrawn = args -> hasDrawn;
-    
-    Direction curMoveDir = args -> curMoveDir;
-    int curMoveOffset = args -> curMoveOffset;
-
-    unsigned long curTime = SDL_GetTicks();
+    *prevTime = *curTime;
+    *curTime = SDL_GetTicks();
+    unsigned long deltaTime = *curTime - *prevTime;
 
 
-    // *curPauseMs < 0 only after the pause time is reset
-    if (*curPauseMs < 0) {
-        bool initCall = false;
-        if (!hasDrawn) {
-            args -> hasDrawn = true;
-            initCall = true;
-        }
+    // Check whether the main draw function should be called
+    WindowDetails *winInfo = args -> window;
 
-        // Update counters
-        *t1 += (curTime - *prev);
-        *t2 += (curTime - *prev);
+    AnimDetails *animation = args -> animation;
+    bool shouldDraw = true;
 
-        // Move
-        if (move(person, curMoveDir, displayW, displayH, window, windowSurface, curMoveOffset, endX, endY, curFrame, t1, t2, initCall)) {
-            // Movement finished, reset variables
-            *curFrame = 0;
-            *t1 = 0;
-            *t2 = 0;
+    TimeCounter pauseCtr = animation -> pauseCtr;
+    if (pauseCtr.maxMs > 0) {
+        pauseCtr.curMs += deltaTime;
 
-            *endX = -1;
-            *endY = -1;
-
-            args -> hasDrawn = false;
-
-            args -> curMoveDir = (Direction) (SDL_rand(LENGTH));
-            args -> curMoveOffset = SDL_rand(15) + 30;
-
-            // Setup pause between moves
-            *curPauseMs = SDL_rand(500) + 1500;
-            *start = SDL_GetTicks();
-        }
-    } else {
-        // Reset pause time once finished
-        if ((curTime - *start) >= *curPauseMs) {
-            *curPauseMs = -1;
+        if (pauseCtr.curMs >= pauseCtr.maxMs) {
+            // Reset pause counter
+            pauseCtr.curMs = 0;
+            pauseCtr.maxMs = 0;
+        } else {
+            shouldDraw = false;
         }
     }
 
-    *prev = curTime;
+    if (shouldDraw) {
+        if (move(winInfo, animation, deltaTime)) {
+            // Reset animation
+            animation -> hasDrawn = false;
+
+            // Set pause counter
+            pauseCtr.curMs = 0;
+            pauseCtr.maxMs = SDL_rand(500) + 1500;
+        }
+    }
+    animation -> pauseCtr = pauseCtr;
 
     
     // Read events
@@ -278,28 +305,26 @@ int main() {
 
 
     // Create arg struct
-    unsigned long prev = 0;
-    unsigned long start = 0;
-    unsigned int t1 = 0;
-    unsigned int t2 = 0;
-    unsigned int curFrame = 0;
-    int endX = -1;
-    int endY = -1;
-    int curPauseMs = -1;
-    MainLoopArgs argStruct = {
+    WindowDetails winStruct = (WindowDetails) {
         display -> w,
         display -> h,
-        window,
-        windowSurface,
-        person,
-        &prev, &start,
-        &t1, &t2,
-        &curFrame,
-        &curPauseMs,
+        window, windowSurface,
+    };
+
+    AnimDetails animStruct = (AnimDetails) {
+        person, person -> left,
+        (TimeCounter) {0, 0},
+        (TimeCounter) {0, 0}, 0,
+        (TimeCounter) {0, 0}, LEFT, 0, 0, 0,
         false,
-        &endX, &endY,
-        (Direction) (SDL_rand(LENGTH)),
-        SDL_rand(15) + 30,
+    };
+
+    unsigned long prevTime = 0;
+    unsigned long curTime = 0;
+    MainLoopArgs argStruct = {
+        &winStruct,
+        &animStruct,
+        &prevTime, &curTime,
     };
     void *argRef = &argStruct;
 
