@@ -7,6 +7,12 @@ typedef struct FileInfo {
     bool isDir;
 } FileInfo;
 
+#ifdef _WIN32
+#define SEPARATOR '\\'
+#else
+#define SEPARATOR '/'
+#endif
+
 
 bool checkExt(const char *str, char *ext);
 int countNumFiles(const char *path, char **matchingExts, int numExts, bool includeDirs);
