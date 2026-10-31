@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdint.h>
 
 #include <stdio.h>
 
@@ -119,6 +120,11 @@ FileInfo **readFiles(const char *path, char **matchingExts, int numExts, bool in
     *numFiles = numMatched;
     
     // NOTE: This malloc call can fail if there are too many matches
+    if (numMatched > INT64_MAX / sizeof(FileInfo *)) {
+        closedir(dir);
+        *numFiles = -1;
+        return NULL;
+    }
     FileInfo **res = malloc(numMatched * sizeof(FileInfo *));
     struct dirent *curListing = NULL;
     int filetype = 0;

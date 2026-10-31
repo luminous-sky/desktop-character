@@ -33,7 +33,6 @@ char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen) {
     for (int i = 0; i < numFiles; i++) {
         // Don't create a new string
         fixed[i] = files[i] -> filename;
-        printf("%s\n", files[i] -> filename);
     }
 
     return fixed;
@@ -309,7 +308,6 @@ int main() {
                     dir[dirLen] = SEPARATOR;
                     strcpy(dir+dirLen+1, files[active] -> filename);
                     dirLen = strlen(dir);
-                    printf("%s\n", dir);
 
                     // UnloadDirectoryFiles(files);
                     // files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
