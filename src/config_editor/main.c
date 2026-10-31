@@ -2,8 +2,9 @@
 
 #include <raylib.h>
 #define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
+#include <raygui.h>
 #include "raylib_draw.h"
+#include "file_io.h"
 
 #include "preview.h"
 
@@ -27,11 +28,12 @@ char *convertPathToFilename(const char *path, unsigned int baseDirLen) {
     return filename;
 }
 
-char **getFilenames(FilePathList files, unsigned int baseDirLen) {
-    char **fixed = malloc(files.count * sizeof(char *));
-    for (int i = 0; i < files.count; i++) {
-        // Create a new string for each file
-        fixed[i] = convertPathToFilename(files.paths[i], baseDirLen);
+char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen) {
+    char **fixed = malloc(numFiles * sizeof(char *));
+    for (int i = 0; i < numFiles; i++) {
+        // Don't create a new string
+        fixed[i] = files[i] -> filename;
+        printf("%s\n", files[i] -> filename);
     }
 
     return fixed;
@@ -81,13 +83,13 @@ char *convertAbsolutePathToRelative(const char *absPath, const char *dir, unsign
     // Copy over parts
     unsigned int cur = 0;
     res[cur] = '.';
-    res[cur+1] = '/';
+    res[cur+1] = SEPARATOR;
     cur += 2;
 
     for (int i = 0; i < missingSlashes; i++) {
         res[cur] = '.';
         res[cur+1] = '.';
-        res[cur+2] = '/';
+        res[cur+2] = SEPARATOR;
         cur += 3;
     }
 
@@ -119,7 +121,7 @@ char dir[MAX_FILENAME_LEN];
 char workingDir[MAX_FILENAME_LEN];
 unsigned int dirLen = 0;
 unsigned int workingDirLen = 0;
-FilePathList files = {};
+FileInfo **files = NULL;
 
 // Current directory properties
 bool dirsUpdated = false;
@@ -142,19 +144,14 @@ void drawFileSelection() {
     
     if (!curFilenames) {
         // Get first filenames
-        curFilenames = getFilenames(files, dirLen);
-        numFiles = files.count;
+        curFilenames = getFilenames(files, numFiles, dirLen);
     } else if (dirsUpdated) {
         // Update filenames
         dirsUpdated = false;
 
-        for (int i = 0; i < numFiles; i++) {
-            free(curFilenames[i]);
-        }
+        // Only the array needs to be freed as the FileInfo array is freed in main
         free(curFilenames);
-
-        curFilenames = getFilenames(files, dirLen);
-        numFiles = files.count;
+        curFilenames = getFilenames(files, numFiles, dirLen);
     }
     
     Rectangle bounds = {35, 90 + numRows*LINE_SPACE, WIDTH - 70, HEIGHT-INIT_Y - (numRows+1)*LINE_SPACE};
@@ -275,7 +272,10 @@ int main() {
     strcpy(workingDir, dir);
     workingDirLen = dirLen;
     
-    files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+    char *fileExts[4] = {".png", ".jpg", ".jpeg", ".bmp"};
+    int numFileExts = 4;
+
+    files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
 
     while (!WindowShouldClose()) {
         // File selection section
@@ -288,11 +288,11 @@ int main() {
 
             // Handle back button directory changes
             if (moveUpDir) {
-                UnloadDirectoryFiles(files);
+                freeFiles(files, numFiles);
 
                 strcpy(dir, GetPrevDirectoryPath(dir));
                 dirLen = strlen(dir);
-                files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+                files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
 
                 dirsUpdated = true;
 
@@ -305,12 +305,16 @@ int main() {
             // Check selected file
             if (active >= 0 && active < numFiles) {
                 // Move into selected directory
-                if (DirectoryExists(files.paths[active])) {
-                    strcpy(dir, files.paths[active]);
+                if (files[active] -> isDir) {
+                    dir[dirLen] = SEPARATOR;
+                    strcpy(dir+dirLen+1, files[active] -> filename);
                     dirLen = strlen(dir);
+                    printf("%s\n", dir);
 
-                    UnloadDirectoryFiles(files);
-                    files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+                    // UnloadDirectoryFiles(files);
+                    // files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+                    freeFiles(files, numFiles);
+                    files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
 
                     dirsUpdated = true;
 
@@ -319,16 +323,36 @@ int main() {
                     active = -1;
                     focus = -1;
                 } else {
+                    // NOTE: Copies of the strings need to be made to avoid UAF from directory traversal
                     // File was selected, set the current file
                     if (buttons[curSelected].filePath) {
                         free(buttons[curSelected].filePath);
                     }
-                    buttons[curSelected].filePath = convertAbsolutePathToRelative(files.paths[active], workingDir, workingDirLen);
+
+                    int filenameLen = strlen(files[active] -> filename);
+                    int pathLen = dirLen + filenameLen + 1;
                     
+                    char *absPath = malloc((pathLen+1) * sizeof(char));
+                    absPath[pathLen] = '\0';
+                    memcpy(absPath, dir, dirLen);
+                    absPath[dirLen] = SEPARATOR;
+                    memcpy(absPath+dirLen+1, files[active] -> filename, filenameLen);
+
+                    buttons[curSelected].filePath = convertAbsolutePathToRelative(absPath, workingDir, workingDirLen);
+                    free(absPath);
+                    absPath = NULL;
+                    
+                    // Update the button's label
                     if (buttons[curSelected].buttonLabel) {
                         free(buttons[curSelected].buttonLabel);
                     }
-                    buttons[curSelected].buttonLabel = convertPathToFilename(files.paths[active], dirLen);
+
+                    char *newLabel = malloc((filenameLen+1) * sizeof(char));
+                    newLabel[filenameLen] = '\0';
+                    memcpy(newLabel, files[active] -> filename, filenameLen);
+
+                    buttons[curSelected].buttonLabel = newLabel;
+
 
                     // Run exit operation
                     curMode = MAIN;
@@ -349,10 +373,12 @@ int main() {
     }
 
     // Clean up
-    for (int i = 0; i < numFiles; i++) {
-        free(curFilenames[i]);
+    if (curFilenames) {
+        for (int i = 0; i < numFiles; i++) {
+            free(curFilenames[i]);
+        }
+        free(curFilenames);
     }
-    free(curFilenames);
 
     for (int i = 0; i < LENGTH; i++) {
         if (buttons[i].filePath) {
