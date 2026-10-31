@@ -25,7 +25,7 @@ bool checkExt(const char *str, char *ext) {
 
 
 // Iterates to the next directory (if includeDirs is set) or the next file with a matching file extension
-bool iterNextMatch(DIR *dir, char **matchingExts, int numExts, bool includeDirs) {
+bool iterNextMatch(DIR *dir, char **matchingExts, int numExts, bool includeDirs, struct dirent **curListing) {
     errno = 0;
 
     struct dirent *listing = readdir(dir);
@@ -37,6 +37,7 @@ bool iterNextMatch(DIR *dir, char **matchingExts, int numExts, bool includeDirs)
                 // Exclude "." or ".." or other hidden directories
                 if ((listing -> d_name)[0] == '.') break;
                 
+                *curListing = listing;
                 return true;
             case DT_REG:
                 // Match extensions
@@ -48,7 +49,10 @@ bool iterNextMatch(DIR *dir, char **matchingExts, int numExts, bool includeDirs)
                     }
                 }
 
-                if (found) return true;
+                if (found) {
+                    *curListing = listing;
+                    return true;
+                }
 
                 break;
             default:
@@ -68,7 +72,8 @@ int countNumFiles(const char *path, char **matchingExts, int numExts, bool inclu
     if (!dir) return -1;
 
     int count = 0;
-    while (iterNextMatch(dir, matchingExts, numExts, includeDirs)) {
+    struct dirent *curListing = NULL;
+    while (iterNextMatch(dir, matchingExts, numExts, includeDirs, &curListing)) {
         count++;
     }
 
@@ -88,21 +93,26 @@ FileInfo **readFiles(const char *path, char **matchingExts, int numExts, bool in
     *numFiles = numMatched;
 
     FileInfo **res = malloc(numMatched * sizeof(FileInfo *));
+    struct dirent *curListing = NULL;
+
     for (int i = 0; i < numMatched; i++) {
-        iterNextMatch(dir, matchingExts, numExts, includeDirs);
-        struct dirent *listing = readdir(dir);
+        iterNextMatch(dir, matchingExts, numExts, includeDirs, &curListing);
+        if (!curListing) {
+            printf("Ended unexpectedly at %d!\n", i);
+            break;
+        }
 
         
-        int strLen = strlen(listing -> d_name);
+        int strLen = strlen(curListing -> d_name);
         char *filename = malloc((strLen+1) * sizeof(char));
         filename[strLen] = '\0';
 
-        memcpy(filename, listing -> d_name, strLen);
+        memcpy(filename, curListing -> d_name, strLen);
 
 
         FileInfo *info = malloc(sizeof(FileInfo));
         info -> filename = filename;
-        info -> isDir = (listing -> d_type == DT_DIR);
+        info -> isDir = (curListing -> d_type == DT_DIR);
 
 
         res[i] = info;
