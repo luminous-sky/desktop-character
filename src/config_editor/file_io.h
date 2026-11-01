@@ -1,6 +1,8 @@
 #ifndef FILE_IO_H
 #define FILE_IO_H
 
+#include <stdbool.h>
+
 // Custom file reading implementation due to Raylib's directory file function not working on Windows
 typedef struct FileInfo {
     char *filename;

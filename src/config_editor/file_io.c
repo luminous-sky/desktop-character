@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <stdio.h>
 
