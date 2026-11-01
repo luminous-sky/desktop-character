@@ -1,6 +1,19 @@
 #ifndef PREVIEW_H
 #define PREVIEW_H
 
-int showPreview(char *up, char *right, char *down, char *left, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame);
+#include "../character.h"
+
+
+// Used for PreviewMem
+const extern char *SEMAPHORE_NAME;
+const extern char *BACKING_FILENAME;
+
+typedef struct PreviewArgs {
+    Character *person;
+    int *retVal;
+} PreviewArgs;
+
+
+void *showPreview(void *voidArgs);
 
 #endif

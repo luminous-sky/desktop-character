@@ -4,7 +4,7 @@ CFLAGS_DEBUG=-g -fsanitize=address
 CFLAGS_RELEASE=-O2
 INCLUDES=-lSDL3 -lSDL3_image
 INCLUDE_DIRS=-Ithirdparty
-EDITOR_INCLUDES=-lraylib -lm
+EDITOR_INCLUDES=-lraylib -lm -lpthread
 
 .PHONY: devel
 

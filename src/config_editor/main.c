@@ -6,7 +6,9 @@
 #include "raylib_draw.h"
 #include "file_io.h"
 
+#include <pthread.h>
 #include "preview.h"
+#include "preview_mem.h"
 
 #include "../config.h"
 #include "../character.h"
@@ -179,6 +181,14 @@ ValueInput inputs[] = {
     {"FPS: ", 1, 255, 1, false},
 };
 
+// Thread of the preview program
+int previewThreadId = -1;
+int retVal = 0;
+PreviewMem *previewMem = NULL;
+PreviewArgs previewArgs = {NULL, &retVal};
+pthread_t previewThread = {};
+
+
 void drawMain() {
     int centerX = WIDTH / 2;
     int centerY = HEIGHT / 2;
@@ -214,9 +224,9 @@ void drawMain() {
             }
 
             yOffset += NUM_INPUTS*LINE_SPACE + NUM_INPUTS*PADDING;
-            saveFile = GuiButton((Rectangle) {centerX-90, yOffset, 180, 40}, "Save configuration");
-            // saveFile = GuiButton((Rectangle) {centerX-90 - 120, yOffset, 180, 40}, "Save configuration");
-            // preview = GuiButton((Rectangle) {centerX-90 + 120, yOffset, 180, 40}, "See configuration");
+            // saveFile = GuiButton((Rectangle) {centerX-90, yOffset, 180, 40}, "Save configuration");
+            saveFile = GuiButton((Rectangle) {centerX-90 - 120, yOffset, 180, 40}, "Save configuration");
+            preview = GuiButton((Rectangle) {centerX-90 + 120, yOffset, 180, 40}, "See configuration");
 
             // Check if any buttons were pressed
             if (selectFile) {
@@ -240,16 +250,41 @@ void drawMain() {
             }
 
             if (preview) {
-                showPreview(
-                    buttons[UP].filePath,
-                    buttons[RIGHT].filePath,
-                    buttons[DOWN].filePath,
-                    buttons[LEFT].filePath,
-                    inputs[0].value, inputs[1].value,
-                    inputs[2].value, inputs[3].value
-                );
-            }
+                // Stop preview if it is still running
+                bool success = true;
+                if (previewMem) {
+                    sharedMemWriteInt(previewMem, 1);
 
+                    if (pthread_join(previewThread, NULL)) {
+                        printf("An error occurred while stopping the preview (%d)\n", retVal);
+                        success = false;
+                    }
+                } else {
+                    previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, true);
+                    if (!previewMem) {
+                        printf("An error occured while starting the preview\n");
+                        success = false;
+                    }
+                }
+
+                if (success) {
+                    // TODO: This uses a default SDL_PixelFormat as there isn't an SDL window available
+                    // Make preview arguments
+                    previewArgs.person = createCharacter(
+                        buttons[UP].filePath,
+                        buttons[RIGHT].filePath,
+                        buttons[DOWN].filePath,
+                        buttons[LEFT].filePath,
+                        SDL_PIXELFORMAT_ARGB8888,
+                        inputs[0].value, inputs[1].value,
+                        inputs[2].value, inputs[3].value
+                    );
+                    sharedMemWriteInt(previewMem, 0);
+
+                    previewThreadId = pthread_create(&previewThread, NULL, &showPreview, &previewArgs);
+                }
+            }
+            
             break;
         case FILE_SELECT:
             drawFileSelection();
@@ -386,6 +421,10 @@ int main() {
         if (buttons[i].buttonLabel) {
             free(buttons[i].buttonLabel);
         }
+    }
+
+    if (previewMem) {
+        destroyPreviewMem(previewMem, true);
     }
 
     CloseWindow();

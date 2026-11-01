@@ -6,6 +6,10 @@
 #include "../character.h"
 
 #include "preview.h"
+#include "preview_mem.h"
+
+const char *SEMAPHORE_NAME = "preview_semaphore";
+const char *BACKING_FILENAME = "/preview_share_file";
 
 
 // Returns whether the exit event was sent during the movement (original main.c code)
@@ -63,29 +67,61 @@ bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Sur
 
 
 // Original main.c code
-int showPreview(char *up, char *right, char *down, char *left, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame) {
+void *showPreview(void *voidArgs) {
+    PreviewArgs *args = (PreviewArgs *) voidArgs;
+    int *retVal = args -> retVal;
+
+    PreviewMem *previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, false);
+    if (!previewMem) {
+        *retVal = 1;
+        return retVal;
+    }
+
+    Character *person = args -> person;
+    if (!person) {
+        *retVal = 1;
+        return retVal;
+    }
+
     // On Linux, Wayland cannot set the position of the window, so X11 must be used
     if (!strcmp(SDL_GetPlatform(), "Linux")) {
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
     }
 
     // Initialize
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", width, height, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        printf("Failed to initialize SDL.\n");
+        destroyCharacter(person);
+
+        *retVal = 1;
+        return retVal;
+    }
+
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", person -> width, person -> height, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
     if (!window) {
         printf("Failed to create a window.\n");
-        return 1;
+        destroyCharacter(person);
+        SDL_Quit();
+
+        *retVal = 1;
+        return retVal;
     }
 
     SDL_Surface *windowSurface = SDL_GetWindowSurface(window);
     if (!windowSurface) {
         printf("Failed to get the window's surface.\n");
-        return 1;
+        destroyCharacter(person);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+
+        *retVal = 1;
+        return retVal;
     }
 
-    // Create character
-    Character *person = createCharacter(up, right, down, left, windowSurface -> format, width, height, len, msPerFrame);
 
     while (true) {
+        if (sharedMemReadInt(previewMem)) break;
+
         bool exiting = false;
         for (int i = 0; i < LENGTH; i++) {
             if (playAnimation(person, i, window, windowSurface)) {
@@ -101,7 +137,10 @@ int showPreview(char *up, char *right, char *down, char *left, unsigned int widt
 
                 SDL_Event event;
                 while (SDL_PollEvent(&event)) {
-                    if (event.type == SDL_EVENT_QUIT) return true;
+                    if (event.type == SDL_EVENT_QUIT) {
+                        exiting = true;
+                        break;
+                    }
                 }
             }
         }
@@ -113,5 +152,10 @@ int showPreview(char *up, char *right, char *down, char *left, unsigned int widt
     destroyCharacter(person);
     SDL_DestroyWindow(window);
 
-    return 0;
+    SDL_Quit();
+
+    destroyPreviewMem(previewMem, false);
+
+    *retVal = 0;
+    return retVal;
 }
