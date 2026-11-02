@@ -183,6 +183,10 @@ ValueInput inputs[] = {
     {"# of Frames: ", 1, 255, 1, false},
     {"FPS: ", 1, 255, 1, false},
 };
+const int NUM_RIGHT_INPUTS = 1;
+ValueInput rightInputs[] = {
+    {"Scale: ", 1, 8, 1, false},
+};
 
 // Thread of the preview program
 #ifndef DISABLE_PREVIEW
@@ -216,6 +220,7 @@ void drawMain() {
             }
 
             int yOffset = INIT_Y + LENGTH*LINE_SPACE + LENGTH*PADDING;
+
             for (int i = 0; i < NUM_INPUTS; i++) {
                 ValueInput input = inputs[i];
                 
@@ -226,6 +231,18 @@ void drawMain() {
 
                 // Fix for pass-by-value errors
                 inputs[i] = input;
+
+
+                if (i < NUM_RIGHT_INPUTS) {
+                    ValueInput rightInput = rightInputs[i];
+                    
+                    toggled = drawValueInput(rightInput.defaultLabel, 350, yOffset + i*LINE_SPACE + i*PADDING, 28, BLACK, &rightInput);
+                    if (toggled) {
+                        rightInput.isEditing = !rightInput.isEditing;
+                    }
+
+                    rightInputs[i] = rightInput;
+                }
             }
 
             yOffset += NUM_INPUTS*LINE_SPACE + NUM_INPUTS*PADDING;
@@ -253,7 +270,9 @@ void drawMain() {
                     // Width and height
                     inputs[0].value, inputs[1].value,
                     // Number of frames, FPS
-                    inputs[2].value, inputs[3].value
+                    inputs[2].value, inputs[3].value,
+                    // Scale
+                    rightInputs[0].value, false
                 );
             }
 
@@ -284,9 +303,15 @@ void drawMain() {
                         buttons[RIGHT].filePath,
                         buttons[DOWN].filePath,
                         buttons[LEFT].filePath,
+
                         SDL_PIXELFORMAT_ARGB8888,
+
+                        // Width and height
                         inputs[0].value, inputs[1].value,
-                        inputs[2].value, inputs[3].value
+                        // Number of frames, FPS
+                        inputs[2].value, inputs[3].value,
+                        // Scale
+                        rightInputs[0].value, false
                     );
                     sharedMemWriteInt(previewMem, 0);
 

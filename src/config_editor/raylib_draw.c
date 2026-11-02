@@ -106,7 +106,7 @@ bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color la
     int leftOffset = MeasureText(label, labelSize);
 
     return GuiValueBox(
-        (Rectangle) {30+leftOffset, labelY, 3*labelSize, labelSize}, "",
+        (Rectangle) {labelX+leftOffset, labelY, 3*labelSize, labelSize}, "",
         &(input -> value),
         input -> minValue,
         input -> maxValue,

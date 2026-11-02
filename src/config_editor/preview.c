@@ -97,7 +97,16 @@ void *showPreview(void *voidArgs) {
         return retVal;
     }
 
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", person -> width, person -> height, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    int fullWidth = (person -> scale) * (person -> width);
+    if (person -> scaleAddHalf) {
+        fullWidth += (person -> width) >> 1;
+    }
+    int fullHeight = (person -> scale) * (person -> height);
+    if (person -> scaleAddHalf) {
+        fullHeight += (person -> height) >> 1;
+    }
+
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", fullWidth, fullHeight, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
     if (!window) {
         printf("Failed to create a window.\n");
         destroyCharacter(person);
