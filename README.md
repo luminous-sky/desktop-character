@@ -9,7 +9,7 @@ Releases of the program are located on https://fractured-sky.itch.io/desktop-cha
 
 For Windows, simply extract the files and run "out.exe" to start the main program.
 
-For Linux, SDL3 and SDL3_image need to be installed onto the system through the system's package manager. Then, extract the files and run "out" to start the main program.
+For Linux, extract the files and run "out" to start the main program. If it does not start, then SDL3 and SDL3_image may need to be installed onto the system through the system's package manager.
 
 Further information can also be found in the provided README.txt file.
 
@@ -17,9 +17,9 @@ Further information can also be found in the provided README.txt file.
 # Custom configurations
 The configuration loaded on start is "config.charconf" in the current folder.
 
-Currently, the configuration editor is only provided for Linux and can be ran by running "editor" in the extracted files.
+A configuration editor is provided and can be ran by running "editor" or "editor.exe" in the extracted files.
 
-On Windows, the provided spritesheets under example/ can be replaced with other 32x32 spritesheets as a temporary workaround before a Windows version of the editor can be built.
+For Linux, if the editor does not run properly, Raylib may need to be installed onto the system through the system's package manager.
 
 
 # Building
