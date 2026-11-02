@@ -23,6 +23,17 @@ Character *createCharacter(char *up, char *right, char *down, char *left, SDL_Pi
 }
 
 
+// Verifies that the sprite pointers are not NULL
+bool validateCharacter(Character *created) {
+    if (created -> up == NULL) return false;
+    if (created -> right == NULL) return false;
+    if (created -> down == NULL) return false;
+    if (created -> left == NULL) return false;
+
+    return true;
+}
+
+
 // Destroys a character struct
 void destroyCharacter(Character *created) {
     if (created -> up) destroySprites(created -> up, created -> len);

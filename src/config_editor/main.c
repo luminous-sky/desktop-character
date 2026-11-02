@@ -278,22 +278,26 @@ void drawMain() {
 
             #ifndef DISABLE_PREVIEW
             if (preview) {
-                // Stop preview if it is still running
                 bool success = true;
-                if (previewMem) {
+                if (!previewMem) {
+                    // Initialize shared memory
+                    previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, true);
+                    if (!previewMem) {
+                        printf("An error occured while starting the preview\n");
+                        success = false;
+                    }
+                } else if (previewThreadId >= 0) {
+                    // Restart running preview
                     sharedMemWriteInt(previewMem, 1);
 
                     if (pthread_join(previewThread, NULL)) {
                         printf("An error occurred while stopping the preview (%d)\n", retVal);
                         success = false;
                     }
-                } else {
-                    previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, true);
-                    if (!previewMem) {
-                        printf("An error occured while starting the preview\n");
-                        success = false;
-                    }
+
+                    previewThreadId = -1;
                 }
+
 
                 if (success) {
                     // TODO: This uses a default SDL_PixelFormat as there isn't an SDL window available
@@ -313,9 +317,15 @@ void drawMain() {
                         // Scale
                         rightInputs[0].value, false
                     );
-                    sharedMemWriteInt(previewMem, 0);
 
-                    previewThreadId = pthread_create(&previewThread, NULL, &showPreview, &previewArgs);
+                    // Verify sprites were loaded properly before starting
+                    if (validateCharacter(previewArgs.person)) {
+                        sharedMemWriteInt(previewMem, 0);
+                        previewThreadId = pthread_create(&previewThread, NULL, &showPreview, &previewArgs);
+                    } else {
+                        printf("One or more of the character's sprites failed to load!\n");
+                        destroyCharacter(previewArgs.person);
+                    }
                 }
             }
             #endif

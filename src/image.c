@@ -35,7 +35,7 @@ SDL_Surface **loadSpritesheetScaled(SDL_Surface *surface, int spriteWidth, int s
 
     // Verify dimensions
     int iterRows = (numSprites-1) / cols;
-    if (spriteHeight*iterRows > surface -> h) {
+    if (spriteHeight*(iterRows+1) > surface -> h) {
         SDL_SetError("Parameter 'surface' has an invalid height");
         return NULL;
     }
@@ -55,7 +55,7 @@ SDL_Surface **loadSpritesheetScaled(SDL_Surface *surface, int spriteWidth, int s
     int newHeight = scale*spriteHeight;
     if (addHalf) newHeight += (spriteHeight >> 1);
 
-    for (int r = 0; r < iterRows-1; r++) {
+    for (int r = 0; r < iterRows; r++) {
         bounds.y = r*spriteHeight;
 
         for (int c = 0; c < cols; c++) {
