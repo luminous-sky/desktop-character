@@ -5,6 +5,14 @@
 #include "image.h"
 
 
+// Older versions of SDL3 do not have SDL_SCALEMODE_PIXELART
+#ifndef USE_NEAREST_SCALEMODE
+const SDL_ScaleMode PIXEL_SCALEMODE = SDL_SCALEMODE_PIXELART;
+#else
+const SDL_ScaleMode PIXEL_SCALEMODE = SDL_SCALEMODE_NEAREST;
+#endif
+
+
 // Loads an image into a surface with the provided SDL_PixelFormat
 SDL_Surface *loadImage(char *path, SDL_PixelFormat fmt) {
     SDL_Surface *loaded = IMG_Load(path);
@@ -57,7 +65,7 @@ SDL_Surface **loadSpritesheetScaled(SDL_Surface *surface, int spriteWidth, int s
             if (scale == 1 && addHalf == false) {
                 SDL_BlitSurface(surface, &bounds, sprite, NULL);
             } else {
-                SDL_BlitSurfaceScaled(surface, &bounds, sprite, NULL, SDL_SCALEMODE_PIXELART);
+                SDL_BlitSurfaceScaled(surface, &bounds, sprite, NULL, PIXEL_SCALEMODE);
             }
             
             sprites[cols*r + c] = sprite;
@@ -74,7 +82,7 @@ SDL_Surface **loadSpritesheetScaled(SDL_Surface *surface, int spriteWidth, int s
         if (scale == 1 && addHalf == false) {
             SDL_BlitSurface(surface, &bounds, sprite, NULL);
         } else {
-            SDL_BlitSurfaceScaled(surface, &bounds, sprite, NULL, SDL_SCALEMODE_PIXELART);
+            SDL_BlitSurfaceScaled(surface, &bounds, sprite, NULL, PIXEL_SCALEMODE);
         }
 
         sprites[cols*lastRow + c] = sprite;

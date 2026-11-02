@@ -10,6 +10,9 @@
 
 
 // Returns whether the entire animation finished cycling
+const int PX_PER_SEC = 15;
+const int MS_PER_PX = 1000 / PX_PER_SEC;
+
 bool move(WindowDetails *windowInfo, AnimDetails *animation, unsigned long deltaTime) {
     int displayW = windowInfo -> displayW;
     int displayH = windowInfo -> displayH;
@@ -38,7 +41,8 @@ bool move(WindowDetails *windowInfo, AnimDetails *animation, unsigned long delta
         animation -> curFrame = 0;
         animation -> curDir = (Direction) (SDL_rand(LENGTH));
 
-        int tempX, tempY;
+        int tempX = 0;
+        int tempY = 0;
         switch (animation -> curDir) {
             case UP:
                 animation -> curSprite = person -> up;
@@ -94,7 +98,7 @@ bool move(WindowDetails *windowInfo, AnimDetails *animation, unsigned long delta
 
         TimeCounter moveCtr = animation -> moveCtr;
         moveCtr.curMs = 0;
-        moveCtr.maxMs = (person -> msPerFrame) * (person -> len) / (curOffset);
+        moveCtr.maxMs = MS_PER_PX;
         animation -> moveCtr = moveCtr;
     }
 
