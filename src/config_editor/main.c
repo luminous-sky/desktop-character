@@ -308,8 +308,8 @@ void drawMain() {
 
                         // Width and height
                         inputs[0].value, inputs[1].value,
-                        // Number of frames, FPS
-                        inputs[2].value, inputs[3].value,
+                        // Number of frames, msPerFrame
+                        inputs[2].value, 1000 / inputs[3].value,
                         // Scale
                         rightInputs[0].value, false
                     );

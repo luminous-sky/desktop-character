@@ -11,9 +11,12 @@
 const char *SEMAPHORE_NAME = "preview_semaphore";
 const char *BACKING_FILENAME = "/preview_share_file";
 
+// Target time for refreshing events
+int targetMs = 16;
+
 
 // Returns whether the exit event was sent during the movement (original main.c code)
-bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface) {
+bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Surface *windowSurface, PreviewMem *previewMem) {
     SDL_Surface **sprites = NULL;
     switch (dir) {
         case UP:
@@ -53,12 +56,16 @@ bool playAnimation(Character *person, Direction dir, SDL_Window *window, SDL_Sur
         unsigned long start = SDL_GetTicks();
         unsigned long cur = start;
         while ((cur - start) < person -> msPerFrame) {
+            if (sharedMemReadInt(previewMem)) return true;
+
             cur = SDL_GetTicks();
 
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 if (event.type == SDL_EVENT_QUIT) return true;
             }
+
+            SDL_Delay(targetMs);
         }
     }
 
@@ -128,12 +135,28 @@ void *showPreview(void *voidArgs) {
     }
 
 
-    while (true) {
-        if (sharedMemReadInt(previewMem)) break;
+    int numDisplays = 0;
+    SDL_DisplayID *displays = SDL_GetDisplays(&numDisplays);
+    if (numDisplays > 0) {
+        // Pick the first display
+        const SDL_DisplayMode *display = SDL_GetCurrentDisplayMode(displays[0]);
+        SDL_free(displays);
 
+        if (!display) {
+            printf("Failed to get display.\nError: %s\n", SDL_GetError());
+        } else {
+            // Target the monitor's frame rate to reduce CPU use
+            if (display -> refresh_rate > 0.0f) {
+                targetMs = (int) (1000.0 / display -> refresh_rate);
+            }
+        }
+    }
+
+
+    while (true) {
         bool exiting = false;
         for (int i = 0; i < LENGTH; i++) {
-            if (playAnimation(person, i, window, windowSurface)) {
+            if (playAnimation(person, i, window, windowSurface, previewMem)) {
                 exiting = true;
                 break;
             }
@@ -142,6 +165,11 @@ void *showPreview(void *voidArgs) {
             unsigned long start = SDL_GetTicks();
             unsigned long cur = start;
             while ((cur - start) < 1000) {
+                if (sharedMemReadInt(previewMem)) {
+                    exiting = true;
+                    break;
+                }
+
                 cur = SDL_GetTicks();
 
                 SDL_Event event;
@@ -151,6 +179,8 @@ void *showPreview(void *voidArgs) {
                         break;
                     }
                 }
+
+                SDL_Delay(targetMs);
             }
         }
 
