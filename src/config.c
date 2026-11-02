@@ -19,8 +19,8 @@ Character *loadCharacter(const char *filename, SDL_PixelFormat fmt) {
 
     // Read headers:
     // Each parameter is 1 byte read in order
-    // Width, Height, Number of Frames, FPS
-    const unsigned int HEADER_LEN = 4;
+    // Width, Height, Number of Frames, FPS, Scale, +0.5 Scale
+    const unsigned int HEADER_LEN = 6;
     if (!fread(buf, HEADER_LEN, 1, file)) {
         if (feof(file)) {
             SDL_SetError("Character file ended unexpectedly while reading headers");
@@ -37,6 +37,8 @@ Character *loadCharacter(const char *filename, SDL_PixelFormat fmt) {
     unsigned char height = buf[1];
     unsigned char len = buf[2];
     unsigned char fps = buf[3];
+    unsigned char scale = buf[4];
+    bool scaleAddHalf = buf[5] & 0x1;
     unsigned int msPerFrame = 1000 / fps;
 
     
@@ -117,7 +119,7 @@ Character *loadCharacter(const char *filename, SDL_PixelFormat fmt) {
     }
 
     // Create character
-    Character *person = createCharacter(up, right, down, left, fmt, width, height, len, msPerFrame);
+    Character *person = createCharacter(up, right, down, left, fmt, width, height, len, msPerFrame, scale, scaleAddHalf);
     free(up);
     free(right);
     free(down);
@@ -127,7 +129,7 @@ Character *loadCharacter(const char *filename, SDL_PixelFormat fmt) {
 }
 
 
-void saveCharacter(const char *filename, char *up, char *right, char *down, char *left, unsigned char width, unsigned char height, unsigned char len, unsigned char fps) {
+void saveCharacter(const char *filename, char *up, char *right, char *down, char *left, unsigned char width, unsigned char height, unsigned char len, unsigned char fps, unsigned char scale, bool scaleAddHalf) {
     FILE *file = fopen(filename, "wb");
     if (!file) {
         SDL_SetError("Failed to open character file");
@@ -138,12 +140,14 @@ void saveCharacter(const char *filename, char *up, char *right, char *down, char
     
     // Write headers:
     // Each parameter is 1 byte written in order
-    // Width, Height, Number of Frames, FPS
-    const unsigned int HEADER_LEN = 4;
+    // Width, Height, Number of Frames, FPS, Scale, +0.5 Scale
+    const unsigned int HEADER_LEN = 6;
     buf[0] = width;
     buf[1] = height;
     buf[2] = len;
     buf[3] = fps;
+    buf[4] = scale;
+    buf[5] = (unsigned char) scaleAddHalf;
     if (!fwrite(buf, HEADER_LEN, 1, file)) {
         if (ferror(file)) {
             SDL_SetError("Error while writing character file headers");
@@ -249,8 +253,8 @@ CharacterDimensions *loadCharacterDimensions(const char *filename) {
 
     // Read headers:
     // Each parameter is 1 byte read in order
-    // Width, Height, Number of Frames, FPS
-    const unsigned int HEADER_LEN = 4;
+    // Width, Height, Number of Frames, FPS, Scale, +0.5 Scale
+    const unsigned int HEADER_LEN = 6;
     if (!fread(buf, HEADER_LEN, 1, file)) {
         if (feof(file)) {
             SDL_SetError("Character file ended unexpectedly while reading headers");
@@ -265,7 +269,9 @@ CharacterDimensions *loadCharacterDimensions(const char *filename) {
     CharacterDimensions *created = malloc(sizeof(CharacterDimensions));
 
     created -> width = buf[0];
-    created -> height = buf[0];
+    created -> height = buf[1];
+    created -> scale = buf[4];
+    created -> scaleAddHalf = buf[5];
 
     fclose(file);
 

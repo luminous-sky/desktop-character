@@ -5,17 +5,19 @@
 #include "character.h"
 
 // Creates a character struct with the proper sprites loaded
-Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame) {
+Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame, int scale, bool scaleAddHalf) {
     Character *created = malloc(sizeof(Character));
     created -> width = width;
     created -> height = height;
     created -> len = len;
     created -> msPerFrame = msPerFrame;
+    created -> scale = scale;
+    created -> scaleAddHalf = scaleAddHalf;
 
-    created -> up = loadSpritesheetFromFile(up, fmt, width, height, len);
-    created -> right = loadSpritesheetFromFile(right, fmt, width, height, len);
-    created -> down = loadSpritesheetFromFile(down, fmt, width, height, len);
-    created -> left = loadSpritesheetFromFile(left, fmt, width, height, len);
+    created -> up = loadSpritesheetFromFileScaled(up, fmt, width, height, len, scale, scaleAddHalf);
+    created -> right = loadSpritesheetFromFileScaled(right, fmt, width, height, len, scale, scaleAddHalf);
+    created -> down = loadSpritesheetFromFileScaled(down, fmt, width, height, len, scale, scaleAddHalf);
+    created -> left = loadSpritesheetFromFileScaled(left, fmt, width, height, len, scale, scaleAddHalf);
 
     return created;
 }

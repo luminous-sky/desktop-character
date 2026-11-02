@@ -273,7 +273,16 @@ int main() {
     
     CharacterDimensions *spriteSize = loadCharacterDimensions("./config.charconf");
 
-    SDL_Window *window = SDL_CreateWindow("Desktop Character", spriteSize -> width, spriteSize -> height, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
+    int totalWidth = (spriteSize -> scale) * (spriteSize -> width);
+    if (spriteSize -> scaleAddHalf) {
+        totalWidth += (spriteSize -> width) >> 1;
+    }
+    int totalHeight = (spriteSize -> scale) * (spriteSize -> height);
+    if (spriteSize -> scaleAddHalf) {
+        totalHeight += (spriteSize -> height) >> 1;
+    }
+
+    SDL_Window *window = SDL_CreateWindow("Desktop Character", totalWidth, totalHeight, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT);
     destroyCharacterDimensions(spriteSize);
     spriteSize = NULL;
     if (!window) {
