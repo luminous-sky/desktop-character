@@ -6,12 +6,9 @@
 #include "raylib_draw.h"
 #include "file_io.h"
 
-// Allow the preview option to be removed on unsupported platforms
-#ifndef DISABLE_PREVIEW
 #include <pthread.h>
 #include "preview.h"
 #include "preview_mem.h"
-#endif
 
 #include "../config.h"
 #include "../character.h"
@@ -189,13 +186,11 @@ ValueInput rightInputs[] = {
 };
 
 // Thread of the preview program
-#ifndef DISABLE_PREVIEW
 int previewThreadId = -1;
 int retVal = 0;
 PreviewMem *previewMem = NULL;
 PreviewArgs previewArgs = {NULL, &retVal};
 pthread_t previewThread = {};
-#endif
 
 
 void drawMain() {
@@ -246,12 +241,8 @@ void drawMain() {
             }
 
             yOffset += NUM_INPUTS*LINE_SPACE + NUM_INPUTS*PADDING;
-            #ifndef DISABLE_PREVIEW
             saveFile = GuiButton((Rectangle) {centerX-90 - 120, yOffset, 180, 40}, "Save configuration");
             preview = GuiButton((Rectangle) {centerX-90 + 120, yOffset, 180, 40}, "See configuration");
-            #else
-            saveFile = GuiButton((Rectangle) {centerX-90, yOffset, 180, 40}, "Save configuration");
-            #endif
 
             // Check if any buttons were pressed
             if (selectFile) {
@@ -276,7 +267,6 @@ void drawMain() {
                 );
             }
 
-            #ifndef DISABLE_PREVIEW
             if (preview) {
                 bool success = true;
                 if (!previewMem) {
@@ -328,7 +318,6 @@ void drawMain() {
                     }
                 }
             }
-            #endif
             
             break;
         case FILE_SELECT:
@@ -468,11 +457,9 @@ int main() {
         }
     }
 
-    #ifndef DISABLE_PREVIEW
     if (previewMem) {
         destroyPreviewMem(previewMem, true);
     }
-    #endif
 
     CloseWindow();
 
