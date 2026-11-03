@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "image.h"
 #include "character.h"
