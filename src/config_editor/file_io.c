@@ -13,7 +13,7 @@
 #define MAX_PATH_LEN 1024
 
 
-bool checkExt(const char *str, char *ext) {
+bool checkExt(const char *str, const char *ext) {
     int extLen = strnlen(ext, 261);
     if (extLen == 261) {
         printf("File extension is not null-terminated\n");
@@ -30,7 +30,7 @@ bool checkExt(const char *str, char *ext) {
 
 
 // Iterates to the next directory (if includeDirs is set) or the next file with a matching file extension
-bool iterNextMatch(DIR *dir, const char *path, char **matchingExts, int numExts, bool includeDirs, struct dirent **curListing, int *filetype) {
+bool iterNextMatch(DIR *dir, const char *path, const char **matchingExts, int numExts, bool includeDirs, struct dirent **curListing, int *filetype) {
     errno = 0;
 
     // Set up path buffer
@@ -94,7 +94,7 @@ bool iterNextMatch(DIR *dir, const char *path, char **matchingExts, int numExts,
 }
 
 
-int countNumFiles(const char *path, char **matchingExts, int numExts, bool includeDirs) {
+int countNumFiles(const char *path, const char **matchingExts, int numExts, bool includeDirs) {
     DIR *dir = opendir(path);
     if (!dir) return -1;
 
@@ -110,7 +110,7 @@ int countNumFiles(const char *path, char **matchingExts, int numExts, bool inclu
 }
 
 
-FileInfo **readFiles(const char *path, char **matchingExts, int numExts, bool includeDirs, int *numFiles) {
+FileInfo **readFiles(const char *path, const char **matchingExts, int numExts, bool includeDirs, int *numFiles) {
     DIR *dir = opendir(path);
     if (!dir) {
         *numFiles = -1;

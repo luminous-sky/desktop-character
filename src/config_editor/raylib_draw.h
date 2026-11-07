@@ -3,6 +3,9 @@
 
 #include <raylib.h>
 
+#include "file_io.h"
+
+
 // Holds the button's text and the current filename
 typedef struct FileButton {
     char *filePath;
@@ -23,6 +26,16 @@ typedef struct ValueInput {
 
 // Holds data for the file selection's UI state
 typedef struct FileSelectState {
+    FileInfo **files;
+    char **filenames;
+    int numFiles;
+    
+    const char **fileExts;
+    const int numFileExts;
+
+    char *dir;
+    int dirLen;
+
     int scrollIndex;
     int active;
     int focus;
@@ -38,6 +51,7 @@ int drawTextWrappedAtSlash(char *text, int maxRowChars, int x, int y, int deltaY
 bool drawFileButton(char *label, int labelX, int labelY, int labelSize, Color labelColor, FileButton *button);
 bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color labelColor, ValueInput *input);
 
-void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, const char *dir, char **files, int numFiles, FileSelectState *state);
+char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen);
+void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, FileSelectState *state);
 
 #endif

@@ -1,7 +1,9 @@
 #include <raylib.h>
 #include <raygui.h>
 #include <string.h>
+#include <stdlib.h>
 
+#include "file_io.h"
 #include "raylib_draw.h"
 
 
@@ -115,16 +117,85 @@ bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color la
 }
 
 
+// Puts all of the filenames into a single array
+char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen) {
+    char **fixed = malloc(numFiles * sizeof(char *));
+    for (int i = 0; i < numFiles; i++) {
+        // Don't create a new string
+        fixed[i] = files[i] -> filename;
+    }
+
+    return fixed;
+}
+
+
 // Draws the file selection window
-void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, const char *dir, char **files, int numFiles, FileSelectState *state) {
+void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, FileSelectState *state) {
     // Current directory
-    int numRows = drawTextWrappedAtSlash(dir, wrapChars, bounds.x + 50, bounds.y, lineSpace, 24, BLACK);
+    int numRows = drawTextWrappedAtSlash(state -> dir, wrapChars, bounds.x + 50, bounds.y, lineSpace, 24, BLACK);
 
     state -> moveUpDir = GuiButton((Rectangle) {bounds.x, bounds.y, 40, 40}, "<");
     state -> exitSelect = GuiButton((Rectangle) {bounds.x + bounds.width - 40, bounds.y, 40, 40}, "X");
+    
+    // Previous directory
+    bool dirUpdated = false;
+    if (state -> moveUpDir) {
+        strcpy(state -> dir, GetPrevDirectoryPath(state -> dir));
+        state -> dirLen = strlen(state -> dir);
+        
+        dirUpdated = true;
+    }
+    
+    // Selected directory
+    // Selected file handling should be done outside of the draw call
+    if (state -> active >= 0 && state -> active < state -> numFiles) {
+        FileInfo *selected = state -> files[state -> active];
+
+        if (selected -> isDir) {
+            state -> dir[state -> dirLen] = SEPARATOR;
+            strcpy((state -> dir) + (state -> dirLen)+1, selected -> filename);
+            state -> dirLen = strlen(state -> dir);
+
+            dirUpdated = true;
+        }
+    }
+    
+    if (dirUpdated) {
+        // Update files
+        freeFiles(state -> files, state -> numFiles);
+        state -> files = readFiles(
+            state -> dir,
+            state -> fileExts,
+            state -> numFileExts,
+            true,
+            &(state -> numFiles)
+        );
+
+        // Old Raylib calls
+        // UnloadDirectoryFiles(files);
+        // files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
+
+        // Only the outer array needs to be freed
+        // The filename pointers are freed by freeFiles()
+        free(state -> filenames);
+        state -> filenames = getFilenames(
+            state -> files,
+            state -> numFiles,
+            state -> dirLen
+        );
+
+        // Reset GUI state
+        state -> scrollIndex = 0;
+        state -> active = -1;
+        state -> focus = -1;
+    }
 
     Rectangle viewBounds = (Rectangle) {bounds.x, bounds.y + numRows*lineSpace, bounds.width, bounds.height - (numRows+1)*lineSpace};
 
     GuiSetStyle(LISTVIEW, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
-    GuiListViewEx(viewBounds, files, numFiles, &(state -> scrollIndex), &(state -> active), &(state -> focus));
+    GuiListViewEx(
+        viewBounds,
+        state -> filenames, state -> numFiles,
+        &(state -> scrollIndex), &(state -> active), &(state -> focus)
+    );
 }

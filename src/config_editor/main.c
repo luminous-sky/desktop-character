@@ -15,7 +15,6 @@
 
 // Inclusive max filename length
 #define MAX_FILENAME_LEN 255
-#define FILE_FILTER "DIRS*;.png;.jpg;.jpeg;.bmp"
 
 
 // Fixes Raylib's paths into just filenames
@@ -28,16 +27,6 @@ char *convertPathToFilename(const char *path, unsigned int baseDirLen) {
     memcpy(filename, path+baseDirLen, newLen);
 
     return filename;
-}
-
-char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen) {
-    char **fixed = malloc(numFiles * sizeof(char *));
-    for (int i = 0; i < numFiles; i++) {
-        // Don't create a new string
-        fixed[i] = files[i] -> filename;
-    }
-
-    return fixed;
 }
 
 // Converts absolute paths to a path relative to the current directory
@@ -122,15 +111,18 @@ char dir[MAX_FILENAME_LEN];
 char workingDir[MAX_FILENAME_LEN];
 unsigned int dirLen = 0;
 unsigned int workingDirLen = 0;
-FileInfo **files = NULL;
-
-// Current directory properties
-bool dirsUpdated = false;
-char **curFilenames = NULL;
-int numFiles = 0;
 
 // ListView selection variables
+const char *FILE_EXTS[] = {".png", ".jpg", ".jpeg", ".bmp"};
+const int NUM_FILE_EXTS = 4;
 FileSelectState state = {
+    // files, filenames, numFiles
+    NULL, NULL, -1,
+    // fileExts, numFileExts
+    FILE_EXTS, NUM_FILE_EXTS,
+    // dir, dirLen
+    dir, -1,
+    
     // scrollIndex, active, focus
     0, -1, -1,
     // moveUpDir, exitSelection
@@ -139,19 +131,7 @@ FileSelectState state = {
 
 
 void drawFileSelectionFiles() {
-    if (!curFilenames) {
-        // Get first filenames
-        curFilenames = getFilenames(files, numFiles, dirLen);
-    } else if (dirsUpdated) {
-        // Update filenames
-        dirsUpdated = false;
-
-        // Only the array needs to be freed as the FileInfo array is freed in main
-        free(curFilenames);
-        curFilenames = getFilenames(files, numFiles, dirLen);
-    }
-
-    drawFileSelection((Rectangle) {25, 90, WIDTH-50, HEIGHT-INIT_Y}, 35, LINE_SPACE, dir, curFilenames, numFiles, &state);
+    drawFileSelection((Rectangle) {25, 90, WIDTH-50, HEIGHT-INIT_Y}, 35, LINE_SPACE, &state);
 }
 
 
@@ -325,16 +305,14 @@ int main() {
     SetExitKey(KEY_NULL);
 
     // Main loop
-    strcpy(dir, GetWorkingDirectory());
-    dirLen = strlen(dir);
-    
-    strcpy(workingDir, dir);
-    workingDirLen = dirLen;
-    
-    char *fileExts[4] = {".png", ".jpg", ".jpeg", ".bmp"};
-    int numFileExts = 4;
+    strcpy(workingDir, GetWorkingDirectory());
+    workingDirLen = strlen(workingDir);
 
-    files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
+    strcpy(dir, workingDir);
+    state.dirLen = workingDirLen;
+
+    state.files = readFiles(dir, state.fileExts, state.numFileExts, true, &(state.numFiles));
+    state.filenames = getFilenames(state.files, state.numFiles, state.dirLen);
 
     while (!WindowShouldClose()) {
         // File selection section
@@ -345,46 +323,11 @@ int main() {
                 curMode = MAIN;
             }
 
-            // Handle back button directory changes
-            if (state.moveUpDir) {
-                state.moveUpDir = false;
-
-                freeFiles(files, numFiles);
-
-                strcpy(dir, GetPrevDirectoryPath(dir));
-                dirLen = strlen(dir);
-                files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
-
-                dirsUpdated = true;
-
-                // Reset GUI state
-                state.scrollIndex = 0;
-                state.active = -1;
-                state.focus = -1;
-            }
-
             // Check selected file
-            if (state.active >= 0 && state.active < numFiles) {
-                FileInfo *selected = files[state.active];
+            if (state.active >= 0 && state.active < state.numFiles) {
+                FileInfo *selected = state.files[state.active];
 
-                // Move into selected directory
-                if (selected -> isDir) {
-                    dir[dirLen] = SEPARATOR;
-                    strcpy(dir+dirLen+1, selected -> filename);
-                    dirLen = strlen(dir);
-
-                    // UnloadDirectoryFiles(files);
-                    // files = LoadDirectoryFilesEx(dir, FILE_FILTER, false);
-                    freeFiles(files, numFiles);
-                    files = readFiles(dir, fileExts, numFileExts, true, &numFiles);
-
-                    dirsUpdated = true;
-
-                    // Reset GUI state
-                    state.scrollIndex = 0;
-                    state.active = -1;
-                    state.focus = -1;
-                } else {
+                if (!(selected -> isDir)) {
                     // NOTE: Copies of the strings need to be made to avoid UAF from directory traversal
                     // File was selected, set the current file
                     if (buttons[curSelected].filePath) {
@@ -392,13 +335,15 @@ int main() {
                     }
 
                     int filenameLen = strlen(selected -> filename);
-                    int pathLen = dirLen + filenameLen + 1;
+                    int pathLen = state.dirLen + filenameLen + 1;
                     
+                    // Copy paths
                     char *absPath = malloc((pathLen+1) * sizeof(char));
                     absPath[pathLen] = '\0';
-                    memcpy(absPath, dir, dirLen);
-                    absPath[dirLen] = SEPARATOR;
-                    memcpy(absPath+dirLen+1, selected -> filename, filenameLen);
+
+                    memcpy(absPath, state.dir, state.dirLen);
+                    absPath[state.dirLen] = SEPARATOR;
+                    memcpy(absPath + (state.dirLen + 1), selected -> filename, filenameLen);
 
                     buttons[curSelected].filePath = convertAbsolutePathToRelative(absPath, workingDir, workingDirLen);
                     free(absPath);
@@ -435,11 +380,11 @@ int main() {
     }
 
     // Clean up
-    if (curFilenames) {
-        for (int i = 0; i < numFiles; i++) {
-            free(curFilenames[i]);
+    if (state.filenames) {
+        for (int i = 0; i < state.numFiles; i++) {
+            free(state.filenames[i]);
         }
-        free(curFilenames);
+        free(state.filenames);
     }
 
     for (int i = 0; i < LENGTH; i++) {

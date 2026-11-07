@@ -16,10 +16,10 @@ typedef struct FileInfo {
 #endif
 
 
-bool checkExt(const char *str, char *ext);
-int countNumFiles(const char *path, char **matchingExts, int numExts, bool includeDirs);
+bool checkExt(const char *str, const char *ext);
+int countNumFiles(const char *path, const char **matchingExts, int numExts, bool includeDirs);
 
-FileInfo **readFiles(const char *path, char **matchingExts, int numExts, bool includeDirs, int *numFiles);
+FileInfo **readFiles(const char *path, const char **matchingExts, int numExts, bool includeDirs, int *numFiles);
 void freeFiles(FileInfo **files, int numFiles);
 
 #endif
