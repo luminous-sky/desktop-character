@@ -130,19 +130,15 @@ char **curFilenames = NULL;
 int numFiles = 0;
 
 // ListView selection variables
-int scrollIndex = 0;
-int active = -1;
-int focus = -1;
+FileSelectState state = {
+    // scrollIndex, active, focus
+    0, -1, -1,
+    // moveUpDir, exitSelection
+    false, false,
+};
 
-bool exitSelection = false;
-bool moveUpDir = false;
 
-
-// Draws the file selection window
-void drawFileSelection() {
-    // Current directory
-    int numRows = drawTextWrappedAtSlash(dir, 35, 83, INIT_Y, LINE_SPACE, 24, BLACK);
-    
+void drawFileSelectionFiles() {
     if (!curFilenames) {
         // Get first filenames
         curFilenames = getFilenames(files, numFiles, dirLen);
@@ -154,13 +150,8 @@ void drawFileSelection() {
         free(curFilenames);
         curFilenames = getFilenames(files, numFiles, dirLen);
     }
-    
-    Rectangle bounds = {35, 90 + numRows*LINE_SPACE, WIDTH - 70, HEIGHT-INIT_Y - (numRows+1)*LINE_SPACE};
-    GuiSetStyle(LISTVIEW, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
-    GuiListViewEx(bounds, curFilenames, numFiles, &scrollIndex, &active, &focus);
 
-    moveUpDir = GuiButton((Rectangle) {30, 90, 40, 40}, "<");
-    exitSelection = GuiButton((Rectangle) {WIDTH-30 - 40, 90, 40, 40}, "X");
+    drawFileSelection((Rectangle) {25, 90, WIDTH-50, HEIGHT-INIT_Y}, 35, LINE_SPACE, dir, curFilenames, numFiles, &state);
 }
 
 
@@ -321,7 +312,7 @@ void drawMain() {
             
             break;
         case FILE_SELECT:
-            drawFileSelection();
+            drawFileSelectionFiles();
             break;
     }
 }
@@ -349,13 +340,15 @@ int main() {
         // File selection section
         if (curMode == FILE_SELECT) {
             // Handle exiting
-            if (exitSelection) {
-                exitSelection = false;
+            if (state.exitSelect) {
+                state.exitSelect = false;
                 curMode = MAIN;
             }
 
             // Handle back button directory changes
-            if (moveUpDir) {
+            if (state.moveUpDir) {
+                state.moveUpDir = false;
+
                 freeFiles(files, numFiles);
 
                 strcpy(dir, GetPrevDirectoryPath(dir));
@@ -365,17 +358,19 @@ int main() {
                 dirsUpdated = true;
 
                 // Reset GUI state
-                scrollIndex = 0;
-                active = -1;
-                focus = -1;
+                state.scrollIndex = 0;
+                state.active = -1;
+                state.focus = -1;
             }
 
             // Check selected file
-            if (active >= 0 && active < numFiles) {
+            if (state.active >= 0 && state.active < numFiles) {
+                FileInfo *selected = files[state.active];
+
                 // Move into selected directory
-                if (files[active] -> isDir) {
+                if (selected -> isDir) {
                     dir[dirLen] = SEPARATOR;
-                    strcpy(dir+dirLen+1, files[active] -> filename);
+                    strcpy(dir+dirLen+1, selected -> filename);
                     dirLen = strlen(dir);
 
                     // UnloadDirectoryFiles(files);
@@ -386,9 +381,9 @@ int main() {
                     dirsUpdated = true;
 
                     // Reset GUI state
-                    scrollIndex = 0;
-                    active = -1;
-                    focus = -1;
+                    state.scrollIndex = 0;
+                    state.active = -1;
+                    state.focus = -1;
                 } else {
                     // NOTE: Copies of the strings need to be made to avoid UAF from directory traversal
                     // File was selected, set the current file
@@ -396,14 +391,14 @@ int main() {
                         free(buttons[curSelected].filePath);
                     }
 
-                    int filenameLen = strlen(files[active] -> filename);
+                    int filenameLen = strlen(selected -> filename);
                     int pathLen = dirLen + filenameLen + 1;
                     
                     char *absPath = malloc((pathLen+1) * sizeof(char));
                     absPath[pathLen] = '\0';
                     memcpy(absPath, dir, dirLen);
                     absPath[dirLen] = SEPARATOR;
-                    memcpy(absPath+dirLen+1, files[active] -> filename, filenameLen);
+                    memcpy(absPath+dirLen+1, selected -> filename, filenameLen);
 
                     buttons[curSelected].filePath = convertAbsolutePathToRelative(absPath, workingDir, workingDirLen);
                     free(absPath);
@@ -416,7 +411,7 @@ int main() {
 
                     char *newLabel = malloc((filenameLen+1) * sizeof(char));
                     newLabel[filenameLen] = '\0';
-                    memcpy(newLabel, files[active] -> filename, filenameLen);
+                    memcpy(newLabel, selected -> filename, filenameLen);
 
                     buttons[curSelected].buttonLabel = newLabel;
 
@@ -424,9 +419,9 @@ int main() {
                     // Run exit operation
                     curMode = MAIN;
 
-                    scrollIndex = 0;
-                    active = -1;
-                    focus = -1;
+                    state.scrollIndex = 0;
+                    state.active = -1;
+                    state.focus = -1;
                 }
             }
         }

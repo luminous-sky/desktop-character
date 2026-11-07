@@ -114,3 +114,17 @@ bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color la
     );
 }
 
+
+// Draws the file selection window
+void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, const char *dir, char **files, int numFiles, FileSelectState *state) {
+    // Current directory
+    int numRows = drawTextWrappedAtSlash(dir, wrapChars, bounds.x + 50, bounds.y, lineSpace, 24, BLACK);
+
+    state -> moveUpDir = GuiButton((Rectangle) {bounds.x, bounds.y, 40, 40}, "<");
+    state -> exitSelect = GuiButton((Rectangle) {bounds.x + bounds.width - 40, bounds.y, 40, 40}, "X");
+
+    Rectangle viewBounds = (Rectangle) {bounds.x, bounds.y + numRows*lineSpace, bounds.width, bounds.height - (numRows+1)*lineSpace};
+
+    GuiSetStyle(LISTVIEW, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
+    GuiListViewEx(viewBounds, files, numFiles, &(state -> scrollIndex), &(state -> active), &(state -> focus));
+}
