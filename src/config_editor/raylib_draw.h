@@ -54,4 +54,6 @@ bool drawValueInput(char *label, int labelX, int labelY, int labelSize, Color la
 char **getFilenames(FileInfo **files, int numFiles, unsigned int baseDirLen);
 void drawFileSelection(Rectangle bounds, int wrapChars, int lineSpace, FileSelectState *state);
 
+char *convertAbsolutePathToRelative(const char *absPath, const char *dir, unsigned int dirLen);
+
 #endif

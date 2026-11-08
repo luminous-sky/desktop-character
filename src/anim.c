@@ -259,9 +259,9 @@ bool mainLoop(void *argStruct) {
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT) {
+        if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+            // Events still need to be read to avoid leftover events
             exiting = true;
-            break;
         }
     }
     
@@ -320,7 +320,7 @@ void *animMain(void *voidArgs) {
         return threadReturn(args, 1);
     }
     
-    CharacterDimensions *spriteSize = loadCharacterDimensions("./config.charconf");
+    CharacterDimensions *spriteSize = loadCharacterDimensions(args -> configFilename);
 
     int totalWidth = (spriteSize -> scale) * (spriteSize -> width);
     if (spriteSize -> scaleAddHalf) {

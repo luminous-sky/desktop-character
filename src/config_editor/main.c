@@ -29,65 +29,6 @@ char *convertPathToFilename(const char *path, unsigned int baseDirLen) {
     return filename;
 }
 
-// Converts absolute paths to a path relative to the current directory
-char *convertAbsolutePathToRelative(const char *absPath, const char *dir, unsigned int dirLen) {
-    unsigned int absPathLen = strlen(absPath);
-
-    // Fix the working directory to end in a slash
-    char dirFixed[dirLen+2];
-    dirFixed[dirLen+1] = '\0';
-    memcpy(dirFixed, dir, dirLen);
-
-    if (dir[dirLen] != '/') {
-        dirFixed[dirLen] = '/';
-    } else {
-        dirFixed[dirLen] = '\0';
-    }
-    
-    char *res = NULL;
-    
-    
-    // Match as much of the initial prefix as possible
-    unsigned int lastSlash = 0;
-    for (int i = 0; i < absPathLen && i < dirLen+1; i++) {
-        if (absPath[i] == '/' || absPath[i] == '\\') {
-            lastSlash = i;
-            continue;
-        }
-
-        if (absPath[i] != dirFixed[i]) break;
-    }
-
-    // Find how many slashes were skipped in the directory
-    unsigned int missingSlashes = 0;
-    for (int i = lastSlash; i < dirLen; i++) {
-        if (dir[i] != '/' && dir[i] != '\\') continue;
-        missingSlashes++;
-    }
-
-    // Calculate new string length
-    unsigned int newStrLen = lastSlash+1 + 3*missingSlashes + absPathLen-lastSlash;
-    res = malloc((newStrLen+1) * sizeof(char));
-    res[newStrLen] = '\0';
-
-    // Copy over parts
-    unsigned int cur = 0;
-    res[cur] = '.';
-    res[cur+1] = SEPARATOR;
-    cur += 2;
-
-    for (int i = 0; i < missingSlashes; i++) {
-        res[cur] = '.';
-        res[cur+1] = '.';
-        res[cur+2] = SEPARATOR;
-        cur += 3;
-    }
-
-    memcpy(res+cur, absPath + lastSlash+1, absPathLen - lastSlash);
-
-    return res;
-}
-
 
 // Window variables
 const int WIDTH = 640;
