@@ -338,7 +338,18 @@ int main() {
         }
     }
 
+    // Stop any remaining previews
     if (previewMem) {
+        if (previewThreadId >= 0) {
+            sharedMemWriteInt(previewMem, 1);
+
+            if (pthread_join(previewThread, NULL)) {
+                printf("An error occurred while stopping the preview (%d)\n", retVal);
+            }
+
+            previewThreadId = -1;
+        }
+
         destroyPreviewMem(previewMem, true);
     }
 
