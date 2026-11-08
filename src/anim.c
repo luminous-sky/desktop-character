@@ -15,6 +15,13 @@ const char *SEMAPHORE_NAME = "anim_semaphore";
 const char *BACKING_FILENAME = "/anim_share_file";
 
 
+// Whether the character is being dragged
+bool dragging = false;
+float prevMouseX = -1.0;
+float prevMouseY = -1.0;
+float mouseX = -1.0;
+float mouseY = -1.0;
+
 // Returns whether the entire animation finished cycling
 const int PX_PER_SEC = 15;
 const int MS_PER_PX = 1000 / PX_PER_SEC;
@@ -241,7 +248,7 @@ bool mainLoop(void *argStruct) {
         }
     }
 
-    if (shouldDraw) {
+    if (shouldDraw && !dragging) {
         if (move(winInfo, animation, deltaTime)) {
             // Reset animation
             animation -> hasDrawn = false;
@@ -259,9 +266,56 @@ bool mainLoop(void *argStruct) {
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-            // Events still need to be read to avoid leftover events
-            exiting = true;
+        // Events still need to be read to avoid leftover events
+        switch (event.type) {
+            // Handle exit inputs
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                exiting = true;
+                break;
+            
+            
+            // Handle dragging inputs
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                dragging = false;
+
+                mouseX = -1.0;
+                mouseY = -1.0;
+
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                dragging = true;
+            case SDL_EVENT_MOUSE_MOTION:
+                if (!dragging) {
+                    break;
+                }
+
+                prevMouseX = mouseX;
+                prevMouseY = mouseY;
+
+                SDL_GetGlobalMouseState(&mouseX, &mouseY);
+
+                // Move the window
+                if (prevMouseX >= 0.0 && prevMouseY >= 0.0) {
+                    float deltaX = mouseX - prevMouseX;
+                    float deltaY = mouseY - prevMouseY;
+
+                    int winX = 0;
+                    int winY = 0;
+                    if (!SDL_GetWindowPosition(winInfo -> window, &winX, &winY)) {
+                        printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
+                    } else {
+                        winX += (int) deltaX;
+                        winY += (int) deltaY;
+
+                        if (!SDL_SetWindowPosition(winInfo -> window, winX, winY)) {
+                            printf("Failed to set window position.\n%s\n", SDL_GetError());
+                        }
+                        SDL_SyncWindow(winInfo -> window);
+                    }
+                }
+
+                break;
         }
     }
     
