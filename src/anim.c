@@ -408,6 +408,8 @@ void *animMain(void *voidArgs) {
     SDL_DestroyWindow(window);
     SDL_CleanupTLS();
 
+    // Signal that this thread finished running
+    sharedMemWriteInt(previewMem, 1);
     destroyPreviewMem(previewMem, false);
 
     return threadReturn(args, 0);

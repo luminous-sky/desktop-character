@@ -50,12 +50,7 @@ PreviewMem *createPreviewMem(const char *semaphoreName, const char *backingFilen
     ptrs -> mappedFile = mappedFile;
 
 
-    DWORD viewFlags = 0;
-    if (isInit) {
-        viewFlags = FILE_MAP_ALL_ACCESS;
-    } else {
-        viewFlags = FILE_MAP_READ;
-    }
+    DWORD viewFlags = FILE_MAP_ALL_ACCESS;
 
     int *memptr = MapViewOfFile(mappedFile, viewFlags, 0, 0, ptrs -> memBytes);
     if (!memptr) {

@@ -125,6 +125,19 @@ void clearAllChars(bool destroySharedMem) {
     }
 }
 
+void checkForFinished() {
+    for (int i = 0; i < MAX_CHARACTERS; i++) {
+        if (activeThreads[i] < 0) continue;
+
+        PreviewMem *mem = sharedMemory[i];
+        if (!sharedMemReadInt(mem)) continue;
+
+        sharedMemWriteInt(mem, 0);
+        activeThreads[i] = -1;
+        curChars--;
+    }
+}
+
 
 bool startCharacter();
 void handleSelectedFile();
@@ -157,6 +170,9 @@ int main() {
 
     bool exitEarly = false;
     while (!WindowShouldClose() && !exitEarly) {
+        // Check for any stopped threads
+        checkForFinished();
+
         // Handle main buttons
         if (curMode == MAIN) {
             if (clearAll) {
