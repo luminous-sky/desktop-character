@@ -20,10 +20,16 @@ target_sources(out
         src/image.c
         src/character.c
         src/config.c
+
+        src/config_editor/raylib_draw.c
+        src/config_editor/file_io.c
 )
 if(WIN32)
     target_sources(out
         PRIVATE src/config_editor/preview_mem_win.c
+    )
+    target_link_libraries(out
+        PRIVATE winmm gdi32
     )
 else()
     target_sources(out
@@ -43,6 +49,9 @@ target_link_libraries(out
     PRIVATE
         SDL3
         SDL3_image
+        raylib
+        m
+        pthread
 )
 target_compile_options(out
     PRIVATE -Wall

@@ -275,10 +275,36 @@ void *threadReturn(AnimArgs *args, int val) {
 }
 
 
+// Buffer should be length (strlen(str)+2) + 1
+void copyWithSuffix(const char *str, char *buf, char suffix) {
+    int initLen = strlen(str);
+    memcpy(buf, str, initLen);
+    buf[initLen] = '_';
+    buf[initLen+1] = suffix;
+    buf[initLen+2] = '\0';
+}
+
+
 void *animMain(void *voidArgs) {
     AnimArgs *args = (AnimArgs *) voidArgs;
 
-    PreviewMem *previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, false);
+
+    // Copied from main_runner.c
+    // Semaphore name
+    int semaphoreLen = strlen(SEMAPHORE_NAME);
+    char semaphoreName[semaphoreLen+3];
+    copyWithSuffix(SEMAPHORE_NAME, semaphoreName, '0' + args -> index);
+
+    // Backing filename
+    int filenameLen = strlen(BACKING_FILENAME);
+    char filename[filenameLen+3];
+    copyWithSuffix(BACKING_FILENAME, filename, '0' + args -> index);
+    
+    const char *semaphoreFinal = semaphoreName;
+    const char *filenameFinal = filename;
+
+
+    PreviewMem *previewMem = createPreviewMem(semaphoreFinal, filenameFinal, false);
     if (!previewMem) {
         return threadReturn(args, 1);
     }
@@ -365,18 +391,22 @@ void *animMain(void *voidArgs) {
         emscripten_set_main_loop_arg(mainLoop, argRef, 0, 1);
         #else
         while (true) {
-            if (mainLoop(argRef)) break;
-            if (sharedMemReadInt(previewMem)) break;
-            SDL_Delay(targetMs);
+            if (!sharedMemReadInt(previewMem)) {
+                if (mainLoop(argRef)) break;
+                SDL_Delay(targetMs);
+            } else {
+                break;
+            }
         }
         #endif
 
         destroyCharacter(person);
     }
 
+    // NOTE: SDL_CleanupTLS() cleans up SDL's memory as this thread wasn't created by SDL
     // Clean up
     SDL_DestroyWindow(window);
-    SDL_Quit();
+    SDL_CleanupTLS();
 
     destroyPreviewMem(previewMem, false);
 
