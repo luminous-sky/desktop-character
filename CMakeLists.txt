@@ -15,11 +15,21 @@ set(CMAKE_INSTALL_RPATH "")
 add_executable(out)
 target_sources(out
     PRIVATE
-        src/main.c
+        src/main_runner.c
+        src/anim.c
         src/image.c
         src/character.c
         src/config.c
 )
+if(WIN32)
+    target_sources(out
+        PRIVATE src/config_editor/preview_mem_win.c
+    )
+else()
+    target_sources(out
+        PRIVATE src/config_editor/preview_mem_linux.c
+    )
+endif()
 
 target_include_directories(out
     PRIVATE

@@ -8,6 +8,12 @@
 #include "config.h"
 #include "main_args.h"
 
+#include "anim.h"
+#include "config_editor/preview_mem.h"
+
+const char *SEMAPHORE_NAME = "anim_semaphore";
+const char *BACKING_FILENAME = "/anim_share_file";
+
 
 // Returns whether the entire animation finished cycling
 const int PX_PER_SEC = 15;
@@ -263,7 +269,20 @@ bool mainLoop(void *argStruct) {
 }
 
 
-int main() {
+void *threadReturn(AnimArgs *args, int val) {
+    *(args -> retVal) = val;
+    return args -> retVal;
+}
+
+
+void *animMain(void *voidArgs) {
+    AnimArgs *args = (AnimArgs *) voidArgs;
+
+    PreviewMem *previewMem = createPreviewMem(SEMAPHORE_NAME, BACKING_FILENAME, false);
+    if (!previewMem) {
+        return threadReturn(args, 1);
+    }
+
     // On Linux, Wayland cannot set the position of the window, so X11 must be used
     if (!strcmp(SDL_GetPlatform(), "Linux")) {
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
@@ -272,7 +291,7 @@ int main() {
     // Initialize
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         printf("Failed to initialize SDL.\n");
-        return 1;
+        return threadReturn(args, 1);
     }
     
     CharacterDimensions *spriteSize = loadCharacterDimensions("./config.charconf");
@@ -291,20 +310,20 @@ int main() {
     spriteSize = NULL;
     if (!window) {
         printf("Failed to create a window.\n");
-        return 1;
+        return threadReturn(args, 1);
     }
 
     SDL_Surface *windowSurface = SDL_GetWindowSurface(window);
     if (!windowSurface) {
         printf("Failed to get the window's surface.\n");
-        return 1;
+        return threadReturn(args, 1);
     }
     
 
     const SDL_DisplayMode *display = SDL_GetCurrentDisplayMode(1);
     if (!display) {
         printf("Failed to get display.\nError: %s\n", SDL_GetError());
-        return true;
+        return threadReturn(args, 1);
     }
 
     // Target the monitor's frame rate to reduce CPU use
@@ -314,7 +333,7 @@ int main() {
     }
 
     // Create character
-    Character *person = loadCharacter("./config.charconf", windowSurface -> format);
+    Character *person = loadCharacter(args -> configFilename, windowSurface -> format);
 
 
     // Create arg struct
@@ -341,20 +360,25 @@ int main() {
     };
     void *argRef = &argStruct;
 
-    #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop_arg(mainLoop, argRef, 0, 1);
-    #else
-    while (true) {
-        if (mainLoop(argRef)) break;
-        SDL_Delay(targetMs);
+    if (person && validateCharacter(person)) {
+        #ifdef __EMSCRIPTEN__
+        emscripten_set_main_loop_arg(mainLoop, argRef, 0, 1);
+        #else
+        while (true) {
+            if (mainLoop(argRef)) break;
+            if (sharedMemReadInt(previewMem)) break;
+            SDL_Delay(targetMs);
+        }
+        #endif
+
+        destroyCharacter(person);
     }
-    #endif
 
     // Clean up
-    destroyCharacter(person);
     SDL_DestroyWindow(window);
-
     SDL_Quit();
 
-    return 0;
+    destroyPreviewMem(previewMem, false);
+
+    return threadReturn(args, 0);
 }
