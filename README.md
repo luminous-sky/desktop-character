@@ -9,34 +9,60 @@ Releases of the program are located on https://fractured-sky.itch.io/desktop-cha
 
 For Windows, simply extract the files and run "out.exe" to start the main program.
 
-For Linux, extract the files and run "out" to start the main program. If it does not start, then SDL3 and SDL3_image may need to be installed onto the system through the system's package manager.
+For Linux, extract the files and run "out" to start the main program. If it does not start, then SDL3, SDL3_image, and Raylib may need to be installed onto the system through the system's package manager.
+
+> **NOTE**: On **Arch Linux**, **SDL3_image** must be installed through the package manager as the bundled SDL3_image depends on `libjpeg.so.62` while Arch Linux provides `libjpeg.so.8`.  
+Installing this package (`sdl3_image`) can be done by running `sudo pacman -S sdl3_image` in the terminal.
 
 Further information can also be found in the provided README.txt file.
 
 
 # Custom configurations
-The configuration loaded on start is "config.charconf" in the current folder.
+The main program allows any configuration file with the **.charconf** file extension to be selected. At most **5 characters** can be ran at once.
 
-A configuration editor is provided and can be ran by running "editor" or "editor.exe" in the extracted files.
-
-For Linux, if the editor does not run properly, Raylib may need to be installed onto the system through the system's package manager.
+A configuration editor is provided and can be ran by running "editor" or "editor.exe" in the extracted files. Configurations are saved to **config.charconf** under the current directory, possibly overwriting prior data.
 
 
 # Building
-The main program under src/ was built using SDL3 and SDL3_image with the main loop located in src/main.c.
+The main program and editor program were built using SDL3, SDL3_image, Raylib, and Raygui.
 
-The editor program under src/config_editor was built using Raylib and Raygui with the main loop located in src/config_editor/main.c.
+If any of these libraries are not installed on the system, they can be placed under thirdparty/include (header files) or thirdparty/lib (shared library files) which will be included when building.
 
-If any of these libraries are not installed on the system, they can be placed under thirdparty/ which will be included when building.
+The main program under src/ has its main loop located in src/anim.c. The GUI for the main loop is located in src/main_runner.c.
 
-GCC and Make are used to build the project into the build/ directory.
+The editor program under src/config_editor has its main loop located in src/config_editor/main.c.
+
+
+## CMake
+CMake with GCC is the primary way to build the project into the build/ directory.
+
+Main program and editor:
+```sh
+mkdir build
+cmake -B build/
+cmake --build build/
+```
+
+Specific targets can be specified using the `--target` option:
+- Main program: `--target=out`
+- Editor: `--target=editor`
+
+Additional flags can also be specified when creating the build directory:
+- Enable debug flags: `-DRELEASE=FALSE`
+- Use nearest scaling for older versions of SDL3: `-DUSE_NEAREST_SCALEMODE=TRUE`
+
+
+## Makefile
+Make with GCC can also be used to build the project into the build/ directory.
 
 Main program:
 ```sh
-make release
+mkdir build
+make release # or devel for debug flags
 ```
 
 Editor program:
 ```sh
-make editor_release
+mkdir build
+make editor_release # or editor for debug flags
 ```
