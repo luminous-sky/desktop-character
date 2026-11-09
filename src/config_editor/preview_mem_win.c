@@ -36,7 +36,7 @@ PreviewMem *createPreviewMem(const char *semaphoreName, const char *backingFilen
         );
     } else {
         mappedFile = OpenFileMappingA(
-            FILE_MAP_READ,
+            FILE_MAP_ALL_ACCESS,
             false,
             backingFilename
         );
