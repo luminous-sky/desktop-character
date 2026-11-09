@@ -24,13 +24,13 @@ float mouseY = -1.0;
 
 // Physics constants
 bool isMoving = false;
-const float ACCEL_CONST = 170;
+float accelConst = 170;
+float gravity = 80;
 const float MULTIPLIER = 0.75;
 const float MIN_BOUND = 1.0;
-const float GRAVITY = 80;
 
 // Current physics variables
-float gravityEffect = GRAVITY;
+float gravityEffect = 0;
 float velocityX = 0.0;
 float velocityY = 0.0;
 float accelX = 0.0;
@@ -333,6 +333,9 @@ bool mainLoop(void *argStruct) {
             
             // Handle dragging inputs
             case SDL_EVENT_MOUSE_BUTTON_UP:
+                // Skip handling if accelConst is 0 (disable physics)
+                if (accelConst == 0) break;
+
                 dragging = false;
                 
                 // Set velocity
@@ -346,10 +349,10 @@ bool mainLoop(void *argStruct) {
                 bool greaterY = false;
                 if (velocityY > 0.0 && velocityY > MIN_BOUND) {
                     greaterY = true;
-                    gravityEffect = GRAVITY;
+                    gravityEffect = gravity;
                 } else if (velocityX < 0.0 && velocityY < -1.0 * MIN_BOUND) {
                     greaterY = true;
-                    gravityEffect = -1.0 * GRAVITY;
+                    gravityEffect = -1.0 * gravity;
                 }
 
                 isMoving = (greaterX || greaterY);
@@ -359,8 +362,14 @@ bool mainLoop(void *argStruct) {
 
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                // Skip handling if accelConst is 0 (disable physics)
+                if (accelConst == 0) break;
+
                 dragging = true;
             case SDL_EVENT_MOUSE_MOTION:
+                // Skip handling if accelConst is 0 (disable physics)
+                if (accelConst == 0) break;
+
                 if (!dragging) {
                     break;
                 }
@@ -397,11 +406,11 @@ bool mainLoop(void *argStruct) {
                     bool prevAccelYPos = (accelY > 0.0);
 
                     if (deltaMouse > 0) {
-                        accelX = deltaMouse * deltaX / ACCEL_CONST;
-                        accelY = deltaMouse * deltaY / ACCEL_CONST;
+                        accelX = deltaMouse * deltaX / accelConst;
+                        accelY = deltaMouse * deltaY / accelConst;
                     } else {
-                        accelX = 0.001 * deltaX / ACCEL_CONST;
-                        accelY = 0.001 * deltaY / ACCEL_CONST;
+                        accelX = 0.001 * deltaX / accelConst;
+                        accelY = 0.001 * deltaY / accelConst;
                     }
 
                     // Reset velocity when acceleration changes directions
@@ -511,6 +520,8 @@ void *animMain(void *voidArgs) {
 
     // Create character
     Character *person = loadCharacter(args -> configFilename, windowSurface -> format);
+    accelConst = person -> launchSpeed;
+    gravity = person -> gravity;
 
 
     // Create arg struct

@@ -92,9 +92,11 @@ ValueInput inputs[] = {
     {"# of Frames: ", 1, 255, 1, false},
     {"FPS: ", 1, 255, 1, false},
 };
-const int NUM_RIGHT_INPUTS = 1;
+const int NUM_RIGHT_INPUTS = 3;
 ValueInput rightInputs[] = {
     {"Scale: ", 1, 8, 1, false},
+    {"Launch: ", 0, 255, 1, false},
+    {"Gravity: ", 1, 255, 1, false},
 };
 
 // Thread of the preview program
@@ -175,7 +177,9 @@ void drawMain() {
                     // Number of frames, FPS
                     inputs[2].value, inputs[3].value,
                     // Scale
-                    rightInputs[0].value, false
+                    rightInputs[0].value, false,
+                    // Launch speed, gravity
+                    rightInputs[1].value, rightInputs[2].value
                 );
             }
 
@@ -217,7 +221,9 @@ void drawMain() {
                         // Number of frames, msPerFrame
                         inputs[2].value, 1000 / inputs[3].value,
                         // Scale
-                        rightInputs[0].value, false
+                        rightInputs[0].value, false,
+                        // Launch speed, gravity
+                        rightInputs[1].value, rightInputs[2].value
                     );
 
                     // Verify sprites were loaded properly before starting

@@ -18,6 +18,10 @@ typedef struct Character {
     unsigned int msPerFrame;
     unsigned int scale;
     bool scaleAddHalf;
+
+    // Physics details
+    unsigned int launchSpeed;
+    unsigned int gravity;
 } Character;
 
 
@@ -31,7 +35,7 @@ typedef enum Direction {
 } Direction;
 
 
-Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame, int scale, bool scaleAddHalf);
+Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame, int scale, bool scaleAddHalf, unsigned int launchSpeed, unsigned int gravity);
 bool validateCharacter(Character *created);
 void destroyCharacter(Character *created);
 

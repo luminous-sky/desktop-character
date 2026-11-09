@@ -6,7 +6,7 @@
 #include "character.h"
 
 // Creates a character struct with the proper sprites loaded
-Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame, int scale, bool scaleAddHalf) {
+Character *createCharacter(char *up, char *right, char *down, char *left, SDL_PixelFormat fmt, unsigned int width, unsigned int height, unsigned int len, unsigned int msPerFrame, int scale, bool scaleAddHalf, unsigned int launchSpeed, unsigned int gravity) {
     Character *created = malloc(sizeof(Character));
     created -> width = width;
     created -> height = height;
@@ -14,6 +14,8 @@ Character *createCharacter(char *up, char *right, char *down, char *left, SDL_Pi
     created -> msPerFrame = msPerFrame;
     created -> scale = scale;
     created -> scaleAddHalf = scaleAddHalf;
+    created -> launchSpeed = launchSpeed;
+    created -> gravity = gravity;
 
     created -> up = loadSpritesheetFromFileScaled(up, fmt, width, height, len, scale, scaleAddHalf);
     created -> right = loadSpritesheetFromFileScaled(right, fmt, width, height, len, scale, scaleAddHalf);
