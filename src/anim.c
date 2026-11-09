@@ -22,6 +22,21 @@ float prevMouseY = -1.0;
 float mouseX = -1.0;
 float mouseY = -1.0;
 
+// Physics constants
+bool isMoving = false;
+const float ACCEL_CONST = 170;
+const float MULTIPLIER = 0.75;
+const float MIN_BOUND = 1.0;
+const float GRAVITY = 80;
+
+// Current physics variables
+float gravityEffect = GRAVITY;
+float velocityX = 0.0;
+float velocityY = 0.0;
+float accelX = 0.0;
+float accelY = 0.0;
+
+
 // Returns whether the entire animation finished cycling
 const int PX_PER_SEC = 15;
 const int MS_PER_PX = 1000 / PX_PER_SEC;
@@ -236,7 +251,7 @@ bool mainLoop(void *argStruct) {
     bool shouldDraw = true;
 
     TimeCounter pauseCtr = animation -> pauseCtr;
-    if (pauseCtr.maxMs > 0) {
+    if (pauseCtr.maxMs > 0 && !dragging && !isMoving) {
         pauseCtr.curMs += deltaTime;
 
         if (pauseCtr.curMs >= pauseCtr.maxMs) {
@@ -248,7 +263,7 @@ bool mainLoop(void *argStruct) {
         }
     }
 
-    if (shouldDraw && !dragging) {
+    if (shouldDraw && !dragging && !isMoving) {
         if (move(winInfo, animation, deltaTime)) {
             // Reset animation
             animation -> hasDrawn = false;
@@ -260,9 +275,50 @@ bool mainLoop(void *argStruct) {
     }
     animation -> pauseCtr = pauseCtr;
 
+
+    // Handle velocity
+    if (isMoving) {
+        int winX = 0;
+        int winY = 0;
+        if (!SDL_GetWindowPosition(winInfo -> window, &winX, &winY)) {
+            printf("Failed to get the window's current position.\nError: %s\n", SDL_GetError());
+        } else {
+            winX += (int) velocityX;
+            winY += (int) velocityY;
+
+            if (!SDL_SetWindowPosition(winInfo -> window, winX, winY)) {
+                printf("Failed to set window position.\n%s\n", SDL_GetError());
+            }
+            SDL_SyncWindow(winInfo -> window);
+        }
+        
+
+        velocityX *= MULTIPLIER;
+        velocityY += (gravityEffect * ((float) deltaTime / 1000));
+        velocityY *= MULTIPLIER;
+
+        if (velocityX >= 0.0) {
+            if (velocityX <= MIN_BOUND) velocityX = 0.0;
+        } else {
+            if (velocityX >= -1.0 * MIN_BOUND) velocityX = 0.0;
+        }
+
+        // Check when y-velocity is complete
+        bool yComplete = false;
+        if ((velocityY > 0.0 && gravityEffect > 0.0) || (velocityY < 0.0 && gravityEffect < 0.0)) {
+            yComplete = true;
+        }
+
+        if (velocityX == 0.0 && yComplete) {
+            isMoving = false;
+        }
+    }
+
     
     // Read events
     bool exiting = false;
+    int lastMouseMove = SDL_GetTicks();
+    int curMouseMove = lastMouseMove;
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -278,6 +334,25 @@ bool mainLoop(void *argStruct) {
             // Handle dragging inputs
             case SDL_EVENT_MOUSE_BUTTON_UP:
                 dragging = false;
+                
+                // Set velocity
+                bool greaterX = false;
+                if (velocityX > 0.0 && velocityX > MIN_BOUND) {
+                    greaterX = true;
+                } else if (velocityX < 0.0 && velocityX < -1.0 * MIN_BOUND) {
+                    greaterX = true;
+                }
+
+                bool greaterY = false;
+                if (velocityY > 0.0 && velocityY > MIN_BOUND) {
+                    greaterY = true;
+                    gravityEffect = GRAVITY;
+                } else if (velocityX < 0.0 && velocityY < -1.0 * MIN_BOUND) {
+                    greaterY = true;
+                    gravityEffect = -1.0 * GRAVITY;
+                }
+
+                isMoving = (greaterX || greaterY);
 
                 mouseX = -1.0;
                 mouseY = -1.0;
@@ -289,6 +364,10 @@ bool mainLoop(void *argStruct) {
                 if (!dragging) {
                     break;
                 }
+
+                lastMouseMove = curMouseMove;
+                curMouseMove = SDL_GetTicks();
+                int deltaMouse = curMouseMove - lastMouseMove;
 
                 prevMouseX = mouseX;
                 prevMouseY = mouseY;
@@ -313,6 +392,24 @@ bool mainLoop(void *argStruct) {
                         }
                         SDL_SyncWindow(winInfo -> window);
                     }
+
+                    bool prevAccelXPos = (accelX > 0.0);
+                    bool prevAccelYPos = (accelY > 0.0);
+
+                    if (deltaMouse > 0) {
+                        accelX = deltaMouse * deltaX / ACCEL_CONST;
+                        accelY = deltaMouse * deltaY / ACCEL_CONST;
+                    } else {
+                        accelX = 0.001 * deltaX / ACCEL_CONST;
+                        accelY = 0.001 * deltaY / ACCEL_CONST;
+                    }
+
+                    // Reset velocity when acceleration changes directions
+                    if ((accelX > 0.0) != prevAccelXPos) velocityX = 0.0;
+                    if ((accelY > 0.0) != prevAccelYPos) velocityY = 0.0;
+
+                    velocityX += accelX;
+                    velocityY += accelY;
                 }
 
                 break;
