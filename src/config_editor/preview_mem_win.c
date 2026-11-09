@@ -110,7 +110,6 @@ void destroyPreviewMem(PreviewMem *mem, bool _destroyAll) {
 void lockPreviewMem(PreviewMem *mem) {
     MemPtrs *ptrs = mem -> extra;
     WaitForSingleObject(ptrs -> semaphore, INFINITE);
-    printf("Locked semaphore\n");
 }
 
 void unlockPreviewMem(PreviewMem *mem) {
