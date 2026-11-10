@@ -3,6 +3,9 @@ A program built in SDL3 which displays a character moving around on your desktop
 
 This type of program is also known as a "desktop pet" or "shimeji" program.
 
+![Main Program](./screenshots/main_program.png)
+![Editor Program](./screenshots/editor_program.png)
+
 
 # Running
 Releases of the program are located on https://fractured-sky.itch.io/desktop-character.
